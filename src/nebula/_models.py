@@ -55,8 +55,8 @@ class ActivatedProcedure(BaseModel):
     """
     A procedure-like memory activated during memory traversal.
 
-    This includes preference procedures, atomic traces, and trace-derived
-    strategies. Distinct from facts which are descriptive assertions.
+    This includes preference procedures and atomic traces. Distinct from facts
+    which are descriptive assertions.
     """
 
     activation_score: float | None = Field(0.0, title='Activation Score')
@@ -68,7 +68,10 @@ class ActivatedProcedure(BaseModel):
     id: UUID = Field(..., title='Id')
     is_negated: bool | None = Field(False, title='Is Negated')
     metadata: dict[str, Any] | None = Field(None, title='Metadata')
+    stability_confidence: float | None = Field(None, title='Stability Confidence')
     statement: str = Field(..., title='Statement')
+    truth_confidence: float | None = Field(None, title='Truth Confidence')
+    use_confidence: float | None = Field(None, title='Use Confidence')
 
 
 class ActivatedWorkflowStep(BaseModel):
