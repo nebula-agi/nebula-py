@@ -10,6 +10,7 @@ from .resources.collections import CollectionsResource
 from .resources.connectors import ConnectorsResource
 from .resources.memories import MemoriesResource
 from .resources.snapshots import SnapshotsResource
+from .resources.workspaces import WorkspacesResource
 
 
 class NebulaClient:
@@ -20,6 +21,7 @@ class NebulaClient:
         self.connectors: ConnectorsResource = ConnectorsResource(self._core)
         self.memories: MemoriesResource = MemoriesResource(self._core)
         self.snapshots: SnapshotsResource = SnapshotsResource(self._core)
+        self.workspaces: WorkspacesResource = WorkspacesResource(self._core)
 
     async def aclose(self) -> None:
         await self._core.aclose()

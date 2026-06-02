@@ -3,9 +3,9 @@
 
 from __future__ import annotations
 from typing import Any, Optional, Union
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 from .. import _models as models
-from .._runtime import NebulaCore
+from .._runtime import NebulaCore, validate_response as _validate_response
 
 
 class ClientResource:
@@ -15,11 +15,10 @@ class ClientResource:
     async def health(
         self
     ) -> models.GenericMessageResponse:
-        """
-        Health probe
-        
+        """Health probe
+
         Lightweight liveness probe. Returns a 200 with a fixed message when the API process is up. Does not verify downstream dependencies (database, storage, workers) — use the internal status endpoints for those.
-        
+
         operationId: client.health
         endpoint: GET /v1/health
         """
@@ -33,5 +32,5 @@ class ClientResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.GenericMessageResponse.model_validate(_raw)
-        except ValidationError:
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
