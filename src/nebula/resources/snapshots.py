@@ -3,9 +3,9 @@
 
 from __future__ import annotations
 from typing import Any, Optional, Union
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 from .. import _models as models
-from .._runtime import NebulaCore
+from .._runtime import NebulaCore, validate_response as _validate_response
 
 
 class SnapshotsResource:
@@ -15,13 +15,12 @@ class SnapshotsResource:
     async def export(
         self,
         body: models.SnapshotExportRequest
-    ) -> models.SnapshotEnvelopeOutput:
-        """
-        Export a collection snapshot
-        
+    ) -> Union[models.SnapshotEnvelopeOutput, models.SnapshotObjectReference]:
+        """Export a collection snapshot
+
         Export a collection's full graph state as a
         portable SnapshotEnvelope.
-        
+
         operationId: snapshots.export
         endpoint: POST /v1/device-memory/snapshot/export
         """
@@ -35,20 +34,19 @@ class SnapshotsResource:
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
-            return models.SnapshotEnvelopeOutput.model_validate(_raw)
-        except ValidationError:
+            return _validate_response(Union[models.SnapshotEnvelopeOutput, models.SnapshotObjectReference], _raw)
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def import_(
         self,
         body: models.SnapshotImportRequest
     ) -> models.SnapshotImportResult:
-        """
-        Import a snapshot into an ephemeral collection
-        
+        """Import a snapshot into an ephemeral collection
+
         Import a SnapshotEnvelope into an ephemeral
         collection. Returns the ephemeral collection UUID.
-        
+
         operationId: snapshots.import
         endpoint: POST /v1/device-memory/snapshot/import
         """
@@ -63,5 +61,5 @@ class SnapshotsResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.SnapshotImportResult.model_validate(_raw)
-        except ValidationError:
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
