@@ -3,9 +3,9 @@
 
 from __future__ import annotations
 from typing import Any, Optional, Union
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 from .. import _models as models
-from .._runtime import NebulaCore
+from .._runtime import NebulaCore, validate_response as _validate_response
 
 
 class MemoriesResource:
@@ -17,19 +17,18 @@ class MemoriesResource:
         id: str,
         body: models.AppendMemoryRequest
     ) -> Union[models.AppendMemoryResponse, models.IngestionResponse]:
-        """
-        Append content to an engram
-        
+        """Append content to an engram
+
         Append content to an existing engram.
-        
+
         **For conversation engrams:**
         - Provide `messages` array with content, role, and optional metadata
         - Works like `/conversations/{id}/messages` endpoint
-        
+
         **For document engrams:**
         - Provide either `raw_text` or `chunks` to append additional content
         - Content will be processed and added to the engram
-        
+
         operationId: memories.append
         endpoint: POST /v1/memories/{id}/append
         """
@@ -43,19 +42,18 @@ class MemoriesResource:
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
-            return TypeAdapter(Union[models.AppendMemoryResponse, models.IngestionResponse]).validate_python(_raw)
-        except ValidationError:
+            return _validate_response(Union[models.AppendMemoryResponse, models.IngestionResponse], _raw)
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def create(
         self,
         body: models.CreateMemoryRequest
     ) -> Union[models.MemoryCreateAcceptedResponse, models.SnapshotMutationResult]:
-        """
-        Create a new memory (conversation or document)
-        
+        """Create a new memory (conversation or document)
+
         Create a new memory (conversation or document) using clean JSON body.
-        
+
         - Use `collection_id` (UUID)
         - `kind` is optional and inferred from payload shape:
           - If `messages` present -> conversation
@@ -63,7 +61,7 @@ class MemoriesResource:
         - For conversations: provide `messages` array
         - For documents: provide `raw_text` or `chunks`
         - Use `snapshot` for device-memory mode (mutually exclusive with collection_id)
-        
+
         operationId: memories.create
         endpoint: POST /v1/memories
         """
@@ -77,8 +75,8 @@ class MemoriesResource:
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
-            return TypeAdapter(Union[models.MemoryCreateAcceptedResponse, models.SnapshotMutationResult]).validate_python(_raw)
-        except ValidationError:
+            return _validate_response(Union[models.MemoryCreateAcceptedResponse, models.SnapshotMutationResult], _raw)
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def create_upload(
@@ -87,19 +85,18 @@ class MemoriesResource:
         content_type: str,
         file_size: int
     ) -> models.PresignedUploadResponse:
-        """
-        Get presigned URL for large file upload
-        
+        """Get presigned URL for large file upload
+
         Get a presigned URL for uploading large files directly to S3.
-        
+
         Use this for files larger than 5MB that cannot be sent inline as base64.
         After uploading, reference the file in memory creation using S3FileReference.
-        
+
         Args:
             filename: Original filename (e.g., "image.jpg")
             content_type: MIME type (e.g., "image/jpeg", "application/pdf")
             file_size: Expected file size in bytes (max 100MB)
-        
+
         Returns:
             dict with:
             - upload_url: Presigned URL for PUT request (expires in 1 hour)
@@ -108,7 +105,7 @@ class MemoriesResource:
             - bucket: S3 bucket name
             - expires_in: Seconds until URL expires
             - max_size: Maximum allowed file size
-        
+
         operationId: memories.createUpload
         endpoint: POST /v1/memories/upload
         """
@@ -122,23 +119,22 @@ class MemoriesResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.PresignedUploadResponse.model_validate(_raw)
-        except ValidationError:
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def delete(
         self,
         id: str
     ) -> models.GenericBooleanResponse:
-        """
-        Delete an engram
-        
+        """Delete an engram
+
         Delete a specific engram with graph awareness. All chunks corresponding to the
         engram are deleted, and graph components (entities/relationships) are updated
         or deleted based on remaining chunk references from other engrams.
-        
+
         This method now properly handles graph components and maintains graph integrity
         for search operations.
-        
+
         operationId: memories.delete
         endpoint: DELETE /v1/memories/{id}
         """
@@ -152,28 +148,27 @@ class MemoriesResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.GenericBooleanResponse.model_validate(_raw)
-        except ValidationError:
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def delete_many(
         self,
         body: models.DeleteMemoriesRequest
     ) -> Any:
-        """
-        Delete one or more engrams
-        
+        """Delete one or more engrams
+
         Delete one or more engrams.
-        
+
         This endpoint efficiently handles both single and batch deletions.
         When multiple IDs are provided, it uses optimized batch operations.
-        
+
         Args:
             ids: Either a single UUID or a list of UUIDs to delete
-        
+
         Returns:
             For single deletion: boolean success response
             For batch deletion: detailed results with successful and failed deletions
-        
+
         operationId: memories.deleteMany
         endpoint: POST /v1/memories/delete
         """
@@ -191,12 +186,11 @@ class MemoriesResource:
         self,
         s3_key: str
     ) -> models.GenericMessageResponse:
-        """
-        Delete a previously uploaded S3 file
-        
+        """Delete a previously uploaded S3 file
+
         Delete a file from S3 that was uploaded via a presigned URL.
         Verifies the caller owns the file via S3 object metadata.
-        
+
         operationId: memories.deleteUpload
         endpoint: DELETE /v1/memories/upload
         """
@@ -210,7 +204,7 @@ class MemoriesResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.GenericMessageResponse.model_validate(_raw)
-        except ValidationError:
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def list(
@@ -225,19 +219,18 @@ class MemoriesResource:
         metadata_filters: Optional[Union[str, None]] = None,
         min_applied_wal_seq: Optional[Union[int, None]] = None
     ) -> models.PaginatedListedEngram:
-        """
-        List engrams
-        
+        """List engrams
+
         Returns a cursor-paginated list of engrams the authenticated user
         has access to.
-        
+
         Results can be filtered by providing specific engram IDs or collection IDs.
         Regular users will only see engrams they own or have access to through
         collections. Superusers can see all engrams.
-        
+
         The engrams are returned in order of creation time, most recent
         first. The response includes the engram's text field if available.
-        
+
         operationId: memories.list
         endpoint: GET /v1/memories
         """
@@ -250,18 +243,17 @@ class MemoriesResource:
         })
         try:
             return models.PaginatedListedEngram.model_validate(_raw)
-        except ValidationError:
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def recall_workflow(
         self,
         body: Union[models.CursorRecallRequest, models.PredictRecallRequest, models.ResumeRecallRequest, models.EvidenceRecallRequest, models.BootstrapRecallRequest]
     ) -> dict[str, Any]:
-        """
-        Recall workflow patterns by intent
-        
+        """Recall workflow patterns by intent
+
         Workflow-pattern recall over 5 intents.
-        
+
         * ``cursor`` -- match the caller's anchor against pattern
           canonical states, return ranked patterns + position.
         * ``predict`` -- like cursor but include the predicted next
@@ -270,7 +262,7 @@ class MemoriesResource:
         * ``evidence`` -- expand a specific pattern via
           ``hydrate_pattern``.
         * ``bootstrap`` -- top-K patterns by confidence with no anchor.
-        
+
         operationId: memories.recallWorkflow
         endpoint: POST /v1/memories/workflow/recall
         """
@@ -289,18 +281,17 @@ class MemoriesResource:
         self,
         id: str
     ) -> models.Engram:
-        """
-        Retrieve an engram
-        
+        """Retrieve an engram
+
         Retrieves detailed information about a specific engram by its
         ID.
-        
+
         This endpoint returns the engram's metadata, status, and system information. It does not
         return the engram's content - use the `/engrams/{id}/download` endpoint for that.
-        
+
         Users can only retrieve engrams they own or have access to through collections.
         Superusers can retrieve any engram.
-        
+
         operationId: memories.retrieve
         endpoint: GET /v1/memories/{id}
         """
@@ -314,24 +305,23 @@ class MemoriesResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.Engram.model_validate(_raw)
-        except ValidationError:
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def search(
         self,
         body: models.MemorySearchRequest
     ) -> Union[models.CompactMemoryRecallResponse, models.MemoryRecall, models.SnapshotSearchResult]:
-        """
-        Search memories
-        
+        """Search memories
+
         Perform a search query across your memories.
-        
+
         **Standard mode** (collection_ids or readable-scope search): returns hierarchical MemoryRecall
         with semantics, episodes, procedures, and sources.
-        
+
         **Snapshot mode** (snapshot field): returns graph-search results with
         {entities, relationships} from stateless in-memory traversal.
-        
+
         operationId: memories.search
         endpoint: POST /v1/memories/search
         """
@@ -345,8 +335,8 @@ class MemoriesResource:
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
-            return TypeAdapter(Union[models.CompactMemoryRecallResponse, models.MemoryRecall, models.SnapshotSearchResult]).validate_python(_raw)
-        except ValidationError:
+            return _validate_response(Union[models.CompactMemoryRecallResponse, models.MemoryRecall, models.SnapshotSearchResult], _raw)
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def update(
@@ -356,23 +346,22 @@ class MemoriesResource:
         *,
         collection_id: Optional[Union[str, None]] = None
     ) -> models.Engram:
-        """
-        Update a memory
-        
+        """Update a memory
+
         Update memory-level properties including name, metadata, and collection associations.
-        
+
         This endpoint allows updating properties of an entire memory (document or conversation)
         without modifying its content:
         - **name**: Updates the authoritative engram title
         - **metadata**: Can replace or merge with existing metadata
         - **collection_ids**: Updates authoritative engram collection associations
-        
+
         Users can only update memories they own or have access to through collections.
         At least one collection association must be maintained.
-        
+
         If collection_id is provided and the engram is shared across collections, a copy-on-write
         will be performed to create a collection-specific copy before modification.
-        
+
         operationId: memories.update
         endpoint: PATCH /v1/memories/{id}
         """
@@ -387,5 +376,5 @@ class MemoriesResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.Engram.model_validate(_raw)
-        except ValidationError:
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]

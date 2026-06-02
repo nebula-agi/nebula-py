@@ -55,8 +55,8 @@ class ActivatedProcedure(BaseModel):
     """
     A procedure-like memory activated during memory traversal.
 
-    This includes preference procedures, atomic traces, and trace-derived
-    strategies. Distinct from facts which are descriptive assertions.
+    This includes preference procedures and atomic traces. Distinct from facts
+    which are descriptive assertions.
     """
 
     activation_score: float | None = Field(0.0, title='Activation Score')
@@ -68,7 +68,10 @@ class ActivatedProcedure(BaseModel):
     id: UUID = Field(..., title='Id')
     is_negated: bool | None = Field(False, title='Is Negated')
     metadata: dict[str, Any] | None = Field(None, title='Metadata')
+    stability_confidence: float | None = Field(None, title='Stability Confidence')
     statement: str = Field(..., title='Statement')
+    truth_confidence: float | None = Field(None, title='Truth Confidence')
+    use_confidence: float | None = Field(None, title='Use Confidence')
 
 
 class ActivatedWorkflowStep(BaseModel):
@@ -231,6 +234,7 @@ class CollectionResponse(BaseModel):
     preview_query_limit: int | None = Field(0, title='Preview Query Limit')
     purchase_price_usd: str | None = Field(None, title='Purchase Price Usd')
     rental_price_monthly_usd: str | None = Field(None, title='Rental Price Monthly Usd')
+    storage_target_id: UUID | None = Field(None, title='Storage Target Id')
     updated_at: datetime = Field(..., title='Updated At')
     user_count: int = Field(..., title='User Count')
     workflows_enabled: bool | None = Field(False, title='Workflows Enabled')
@@ -302,8 +306,17 @@ class ConversationFields(BaseModel):
 class CreateCollectionRequest(BaseModel):
     description: str | None = Field(None, title='Description')
     name: str = Field(..., title='Name')
+    storage_target_id: UUID | None = Field(
+        None,
+        description="BYOC storage target to host this collection's graph data. Requires a team workspace and an active target provisioned through the dashboard or workspace storage-target APIs.",
+        title='Storage Target Id',
+    )
     workflows_enabled: bool | None = Field(False, title='Workflows Enabled')
-    workspace_id: UUID | None = Field(None, title='Workspace Id')
+    workspace_id: UUID | None = Field(
+        None,
+        description='Workspace this collection belongs to. Provisioned via the dashboard / management API, not minted through the public SDK.',
+        title='Workspace Id',
+    )
 
 
 class Chunks1Item(Chunk):
@@ -912,16 +925,37 @@ class SearchSettings(BaseModel):
     )
 
 
-class SnapshotExportRequest(BaseModel):
-    collection_id: UUID = Field(..., title='Collection Id')
-
-
 class SnapshotImportResult(BaseModel):
     """
     Ephemeral collection handle returned after importing a snapshot.
     """
 
     ephemeral_collection_id: UUID = Field(..., title='Ephemeral Collection Id')
+
+
+class SnapshotObjectReference(BaseModel):
+    """
+    Customer-owned snapshot object transport for device memory.
+    """
+
+    collection_id: UUID = Field(
+        ...,
+        description='Collection UUID the referenced snapshot belongs to. Nebula authorizes this collection before fetching customer-owned URLs.',
+        title='Collection Id',
+    )
+    get_headers: dict[str, str] | None = Field(None, title='Get Headers')
+    get_url: str | None = Field(
+        None,
+        description='Short-lived signed URL Nebula can GET to load the snapshot.',
+        title='Get Url',
+    )
+    put_headers: dict[str, str] | None = Field(None, title='Put Headers')
+    put_url: str | None = Field(
+        None,
+        description='Short-lived signed URL Nebula can PUT to store an updated snapshot.',
+        title='Put Url',
+    )
+    type: Literal['signed_url'] = Field('signed_url', title='Type')
 
 
 class SnapshotSearchEntityResponse(BaseModel):
@@ -950,6 +984,49 @@ class SnapshotSearchResult(BaseModel):
     relationships: list[SnapshotSearchRelationshipResponse] | None = Field(
         None, title='Relationships'
     )
+
+
+class StorageTargetCreateRequest(BaseModel):
+    """
+    Hosted SaaS storage target registration. Use AWS S3 and omit custom endpoint configuration.
+    """
+
+    bucket: str = Field(..., max_length=255, min_length=1, title='Bucket')
+    kms_key_id: str | None = Field(None, max_length=2048, title='Kms Key Id')
+    name: str = Field(..., max_length=128, min_length=1, title='Name')
+    prefix: str | None = Field('', max_length=1024, title='Prefix')
+    region: str = Field(..., max_length=64, title='Region')
+    role_arn: str = Field(
+        ...,
+        description='AWS IAM role ARN Nebula assumes to access the bucket.',
+        max_length=2048,
+        title='Role Arn',
+    )
+
+
+class Status2(Enum):
+    pending = 'pending'
+    active = 'active'
+    validation_failed = 'validation_failed'
+    disabled = 'disabled'
+
+
+class StorageTargetResponse(BaseModel):
+    bucket: str = Field(..., title='Bucket')
+    created_at: datetime = Field(..., title='Created At')
+    external_id: str = Field(..., title='External Id')
+    id: UUID = Field(..., title='Id')
+    kind: Literal['customer_s3'] = Field(..., title='Kind')
+    kms_key_id: str | None = Field(None, title='Kms Key Id')
+    last_validated_at: datetime | None = Field(None, title='Last Validated At')
+    name: str = Field(..., title='Name')
+    prefix: str = Field(..., title='Prefix')
+    region: str | None = Field(None, title='Region')
+    role_arn: str | None = Field(None, title='Role Arn')
+    status: Status2 = Field(..., title='Status')
+    updated_at: datetime = Field(..., title='Updated At')
+    validation_error: str | None = Field(None, title='Validation Error')
+    workspace_id: UUID = Field(..., title='Workspace Id')
 
 
 class TextContentRequest(BaseModel):
@@ -1042,6 +1119,10 @@ class WrappedIngestionResponse(BaseModel):
     results: IngestionResponse
 
 
+class WrappedListOfStorageTargetResponse(BaseModel):
+    results: list[StorageTargetResponse] = Field(..., title='Results')
+
+
 class WrappedListOfStr(BaseModel):
     results: list[str] = Field(..., title='Results')
 
@@ -1060,6 +1141,10 @@ class WrappedSnapshotImportResult(BaseModel):
 
 class WrappedSnapshotSearchResult(BaseModel):
     results: SnapshotSearchResult
+
+
+class WrappedStorageTargetResponse(BaseModel):
+    results: StorageTargetResponse
 
 
 class ActivatedWorkflow(BaseModel):
@@ -1468,8 +1553,14 @@ class SnapshotEnvelopeOutput(SnapshotEnvelopeInput):
     """
 
 
+class SnapshotExportRequest(BaseModel):
+    collection_id: UUID = Field(..., title='Collection Id')
+    destination: SnapshotObjectReference | None = None
+
+
 class SnapshotImportRequest(BaseModel):
-    snapshot: SnapshotEnvelopeInput
+    snapshot: SnapshotEnvelopeInput | None = None
+    snapshot_ref: SnapshotObjectReference | None = None
 
 
 class SnapshotMutationResult(BaseModel):
@@ -1477,7 +1568,8 @@ class SnapshotMutationResult(BaseModel):
     Updated snapshot returned by snapshot-mode memory writes.
     """
 
-    snapshot: SnapshotEnvelopeOutput
+    snapshot: SnapshotEnvelopeOutput | None = None
+    snapshot_ref: SnapshotObjectReference | None = None
 
 
 class WrappedConnectorConnectionResponse(BaseModel):
@@ -1496,8 +1588,10 @@ class WrappedListOfConnectorConnectionResponse(BaseModel):
     results: list[ConnectorConnectionResponse] = Field(..., title='Results')
 
 
-class WrappedSnapshotEnvelope(BaseModel):
-    results: SnapshotEnvelopeOutput
+class WrappedSnapshotEnvelopeOrSnapshotObjectReference(BaseModel):
+    results: SnapshotEnvelopeOutput | SnapshotObjectReference = Field(
+        ..., title='Results'
+    )
 
 
 class WrappedSnapshotMutationResult(BaseModel):
@@ -1610,6 +1704,10 @@ class CreateMemoryRequest(BaseModel):
         None,
         description='Device-memory snapshot (mutually exclusive with collection_id).',
     )
+    snapshot_ref: SnapshotObjectReference | None = Field(
+        None,
+        description='Device-memory snapshot reference for customer-owned object storage. Mutually exclusive with collection_id and snapshot.',
+    )
     speaker_id: UUID | None = Field(
         None,
         description='UUID of the SourceRole entity creating this memory',
@@ -1699,6 +1797,9 @@ class MemorySearchRequest(BaseModel):
     )
     snapshot: SnapshotEnvelopeInput | None = Field(
         None, description='Device-memory snapshot for stateless search.'
+    )
+    snapshot_ref: SnapshotObjectReference | None = Field(
+        None, description='Device-memory snapshot reference for stateless search.'
     )
 
 
