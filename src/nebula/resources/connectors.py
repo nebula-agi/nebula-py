@@ -3,9 +3,9 @@
 
 from __future__ import annotations
 from typing import Any, Optional, Union
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 from .. import _models as models
-from .._runtime import NebulaCore
+from .._runtime import NebulaCore, validate_response as _validate_response
 
 
 class ConnectorsResource:
@@ -17,11 +17,10 @@ class ConnectorsResource:
         provider: str,
         body: models.ConnectRequest
     ) -> models.ConnectorConnectResponse:
-        """
-        Start OAuth connection flow
-        
+        """Start OAuth connection flow
+
         Start the OAuth connection flow for the given external provider. Returns the authorization URL the user should visit to grant Nebula access. After consent the provider redirects back to Nebula and the connection becomes active.
-        
+
         operationId: connectors.connect
         endpoint: POST /v1/connectors/{provider}/connect
         """
@@ -36,7 +35,7 @@ class ConnectorsResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.ConnectorConnectResponse.model_validate(_raw)
-        except ValidationError:
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def disconnect(
@@ -45,11 +44,10 @@ class ConnectorsResource:
         *,
         delete_memories: Optional[bool] = None
     ) -> models.ConnectorDisconnectResponse:
-        """
-        Disconnect an external data source
-        
+        """Disconnect an external data source
+
         Disconnect the named connection, revoking the stored OAuth credentials and stopping future syncs. Optionally pass `delete_memories=true` to also remove every memory this connection had ingested.
-        
+
         operationId: connectors.disconnect
         endpoint: DELETE /v1/connectors/{connection_id}
         """
@@ -63,18 +61,17 @@ class ConnectorsResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.ConnectorDisconnectResponse.model_validate(_raw)
-        except ValidationError:
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def list(
         self,
         collection_id: str
     ) -> list[models.ConnectorConnectionResponse]:
-        """
-        List active connections for a collection
-        
+        """List active connections for a collection
+
         Return every connector connection associated with the given collection, with encrypted credentials redacted. Useful for showing the user which third-party data sources are wired up to a collection.
-        
+
         operationId: connectors.list
         endpoint: GET /v1/connectors
         """
@@ -87,18 +84,17 @@ class ConnectorsResource:
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
-            return TypeAdapter(list[models.ConnectorConnectionResponse]).validate_python(_raw)
-        except ValidationError:
+            return _validate_response(list[models.ConnectorConnectionResponse], _raw)
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def list_providers(
         self
     ) -> list[str]:
-        """
-        List available connector providers
-        
+        """List available connector providers
+
         Return the set of connector provider identifiers (e.g. `google_drive`, `slack`) that this Nebula instance is configured to expose. Pass one of these to `POST /connectors/{provider}/connect` to start an OAuth flow.
-        
+
         operationId: connectors.listProviders
         endpoint: GET /v1/connectors/providers
         """
@@ -116,11 +112,10 @@ class ConnectorsResource:
         self,
         connection_id: str
     ) -> models.ConnectorConnectionResponse:
-        """
-        Get a single connection by ID
-        
+        """Get a single connection by ID
+
         Fetch a single connector connection by its UUID. Returns the connection metadata plus whether the underlying subscription is active. Encrypted credentials are never returned to clients.
-        
+
         operationId: connectors.retrieve
         endpoint: GET /v1/connectors/{connection_id}
         """
@@ -134,18 +129,17 @@ class ConnectorsResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.ConnectorConnectionResponse.model_validate(_raw)
-        except ValidationError:
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def sync(
         self,
         connection_id: str
     ) -> models.ConnectorSyncResponse:
-        """
-        Manually trigger a sync
-        
+        """Manually trigger a sync
+
         Schedule an immediate sync for an active connection, bypassing the normal cadence. Returns 409 if a sync is already in progress and 400 if the connection isn't in the `active` state.
-        
+
         operationId: connectors.sync
         endpoint: POST /v1/connectors/{connection_id}/sync
         """
@@ -159,5 +153,5 @@ class ConnectorsResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.ConnectorSyncResponse.model_validate(_raw)
-        except ValidationError:
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]

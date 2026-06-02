@@ -3,9 +3,9 @@
 
 from __future__ import annotations
 from typing import Any, Optional, Union
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 from .. import _models as models
-from .._runtime import NebulaCore
+from .._runtime import NebulaCore, validate_response as _validate_response
 
 
 class CollectionsResource:
@@ -16,16 +16,15 @@ class CollectionsResource:
         self,
         body: models.CreateCollectionRequest
     ) -> models.CollectionResponse:
-        """
-        Create a new collection
-        
+        """Create a new collection
+
         Create a new collection and automatically add the creating user
         to it.
-        
+
         This endpoint allows authenticated users to create a new collection
         with a specified name and optional description. The user creating
         the collection is automatically added as a member.
-        
+
         operationId: collections.create
         endpoint: POST /v1/collections
         """
@@ -40,23 +39,22 @@ class CollectionsResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.CollectionResponse.model_validate(_raw)
-        except ValidationError:
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def delete(
         self,
         id: str
     ) -> models.GenericBooleanResponse:
-        """
-        Delete collection
-        
+        """Delete collection
+
         Delete an existing collection.
-        
+
         This endpoint allows deletion of a collection identified by its
         UUID. The user must have appropriate permissions to delete the
         collection. Deleting a collection removes all associations but does
         not delete the engrams within it.
-        
+
         operationId: collections.delete
         endpoint: DELETE /v1/collections/{id}
         """
@@ -70,7 +68,7 @@ class CollectionsResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.GenericBooleanResponse.model_validate(_raw)
-        except ValidationError:
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def list(
@@ -83,19 +81,18 @@ class CollectionsResource:
         owner_only: Optional[bool] = None,
         workspace_id: Optional[Union[str, None]] = None
     ) -> models.PaginatedCollectionResponse:
-        """
-        List collections
-        
+        """List collections
+
         Returns a cursor-paginated list of collections the authenticated
         user has access to.
-        
+
         Results can be filtered by providing specific collection IDs.
         Regular users will only see collections they own or have access to.
         Superusers can see all collections.
-        
+
         The collections are returned in order of last modification, with
         most recent first.
-        
+
         operationId: collections.list
         endpoint: GET /v1/collections
         """
@@ -108,22 +105,21 @@ class CollectionsResource:
         })
         try:
             return models.PaginatedCollectionResponse.model_validate(_raw)
-        except ValidationError:
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def retrieve(
         self,
         id: str
     ) -> models.CollectionResponse:
-        """
-        Get collection details
-        
+        """Get collection details
+
         Get details of a specific collection.
-        
+
         This endpoint retrieves detailed information about a single
         collection identified by its UUID. The user must have access to the
         collection to view its details.
-        
+
         operationId: collections.retrieve
         endpoint: GET /v1/collections/{id}
         """
@@ -137,7 +133,7 @@ class CollectionsResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.CollectionResponse.model_validate(_raw)
-        except ValidationError:
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def retrieve_by_name(
@@ -146,14 +142,13 @@ class CollectionsResource:
         *,
         owner_id: Optional[Union[str, None]] = None
     ) -> models.CollectionResponse:
-        """
-        Get a collection by name
-        
+        """Get a collection by name
+
         Retrieve a collection by its (owner_id, name) combination.
-        
+
         The authenticated user can only fetch collections they own, or, if
         superuser, from anyone.
-        
+
         operationId: collections.retrieveByName
         endpoint: GET /v1/collections/name/{collection_name}
         """
@@ -167,7 +162,7 @@ class CollectionsResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.CollectionResponse.model_validate(_raw)
-        except ValidationError:
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def update(
@@ -175,15 +170,14 @@ class CollectionsResource:
         id: str,
         body: models.UpdateCollectionRequest
     ) -> models.CollectionResponse:
-        """
-        Update collection
-        
+        """Update collection
+
         Update an existing collection's configuration.
-        
+
         This endpoint allows updating the name, description, and access settings of an
         existing collection. The user must have appropriate permissions to
         modify the collection.
-        
+
         operationId: collections.update
         endpoint: POST /v1/collections/{id}
         """
@@ -198,5 +192,5 @@ class CollectionsResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.CollectionResponse.model_validate(_raw)
-        except ValidationError:
+        except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
