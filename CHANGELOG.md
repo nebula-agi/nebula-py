@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.7.0-rc.0](https://github.com/zeroset-inc/nebula-python/compare/v1.6.0-rc.0...v1.7.0-rc.0) (2026-06-02)
+## [1.6.1](https://github.com/zeroset-inc/nebula-python/compare/v1.6.0-rc.0...v1.6.1) (2026-06-02)
 
 
 ### Features
