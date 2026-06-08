@@ -12,7 +12,7 @@
 #
 # Source of truth: nebula-sdks/custom/python/_dx.py
 # The generator copies this file into sdks/python/src/nebula/_dx.py on every
-# `bun run generate`. Edit the source, not the copy.
+# `pnpm --dir nebula-sdks/generator run generate`. Edit the source, not the copy.
 
 from __future__ import annotations
 
