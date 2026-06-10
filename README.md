@@ -45,18 +45,11 @@ provided.
 
 ## Auth
 
-Pass either `api_key` (for Nebula API keys) or `bearer_token` (for JWTs)
-when constructing the client. If you pass an opaque-looking token via
-`api_key` (one that isn't prefixed with `key_` or `neb_`), the DX layer
-automatically routes it through the `Authorization: Bearer` header
-instead — handy when your app exchanges a workspace token for the SDK
-and doesn't want to think about which header to use.
+Pass your Nebula API key as `api_key` when constructing the client. It is sent
+via the `Authorization: Bearer` header.
 
 ```python
 async with Nebula(ClientOptions(api_key="...")) as client:
-    ...
-
-async with Nebula(ClientOptions(bearer_token="...")) as client:
     ...
 ```
 
