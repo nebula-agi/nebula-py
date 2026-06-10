@@ -6,14 +6,12 @@ import httpx
 import pytest
 
 from nebula import Nebula, NebulaClient, ClientOptions
-from nebula._dx import _looks_like_nebula_api_key
 
 
 def _make_dx(transport: httpx.MockTransport, **overrides: Any) -> Nebula:
     options = ClientOptions(
         base_url=overrides.pop("base_url", "https://api.example.com"),
         api_key=overrides.pop("api_key", None),
-        bearer_token=overrides.pop("bearer_token", None),
         transport=transport,
         **overrides,
     )
@@ -149,13 +147,6 @@ async def test_memories_delete_many_takes_id_list_as_body() -> None:
     assert body == ["a", "b"]
 
 
-def test_looks_like_nebula_api_key_prefix_detection() -> None:
-    assert _looks_like_nebula_api_key("key_abc.def") is True
-    assert _looks_like_nebula_api_key("neb_xyz.123") is True
-    assert _looks_like_nebula_api_key("eyJhbGciOiJIUzI1NiJ9") is False
-    assert _looks_like_nebula_api_key("key_abc") is False
-
-
 @pytest.mark.asyncio
 async def test_compat_api_key_alias_via_init_kwargs() -> None:
     captured: list[httpx.Request] = []
@@ -174,33 +165,7 @@ async def test_compat_api_key_alias_via_init_kwargs() -> None:
     finally:
         await client.aclose()
 
-    assert captured[0].headers.get("x-api-key") == "key_real.token"
-    assert "authorization" not in captured[0].headers
-
-
-@pytest.mark.asyncio
-async def test_auth_normalization_non_keyshape_routes_to_bearer() -> None:
-    captured: list[httpx.Request] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured.append(request)
-        return httpx.Response(200, json={"results": {}})
-
-    transport = httpx.MockTransport(handler)
-    client = Nebula(
-        ClientOptions(
-            base_url="https://api.example.com",
-            api_key="eyJhbGciOiJIUzI1NiJ9.opaquebearer",
-            transport=transport,
-        ),
-    )
-    try:
-        await client.memories.retrieve(id="m1")
-    finally:
-        await client.aclose()
-
-    assert captured[0].headers.get("authorization") == "Bearer eyJhbGciOiJIUzI1NiJ9.opaquebearer"
-    assert "x-api-key" not in captured[0].headers
+    assert captured[0].headers.get("authorization") == "Bearer key_real.token"
 
 
 @pytest.mark.asyncio

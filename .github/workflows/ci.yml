@@ -1,4 +1,4 @@
-# Replaces the Stainless-generated `./scripts/{lint,test}`-based CI for the
+# Replaces the legacy `./scripts/{lint,test}`-based CI for the
 # downstream zeroset-inc/nebula-python repo. Synced into place by the upstream
 # nebula-sdk-sync.yml workflow. Edit the template at
 # nebula-sdks/custom/downstream-py/.github/workflows/ci.yml — direct edits in
