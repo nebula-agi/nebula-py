@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.2](https://github.com/zeroset-inc/nebula-python/compare/v1.6.1...v1.6.2) (2026-06-10)
+
+
+### Bug Fixes
+
+* regenerate from nebula@8acf062 ([#123](https://github.com/zeroset-inc/nebula-python/issues/123)) ([d4c0208](https://github.com/zeroset-inc/nebula-python/commit/d4c0208f0352b138f9c84f6bd3f5cb998e49e0e5))
+
 ## [1.6.1](https://github.com/zeroset-inc/nebula-python/compare/v1.6.0-rc.0...v1.6.1) (2026-06-02)
 
 
