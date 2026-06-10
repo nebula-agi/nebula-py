@@ -55,7 +55,6 @@ _DEFAULT_USER_AGENT = "nebula-sdk-py/0.0.1"
 class ClientOptions:
     base_url: str = _DEFAULT_BASE_URL
     api_key: Optional[str] = None
-    bearer_token: Optional[str] = None
     default_headers: Mapping[str, str] = field(default_factory=dict)
     timeout_seconds: float = _DEFAULT_TIMEOUT
     retry: RetryPolicy = DEFAULT_RETRY
@@ -97,10 +96,11 @@ class NebulaCore:
         headers["Accept"] = "application/json"
         if has_body:
             headers["Content-Type"] = "application/json"
+        # The API key authenticates via the Authorization header -- the backend
+        # resolves a Nebula API key (or, for internal callers, a JWT) from the
+        # same bearer credential.
         if self._options.api_key:
-            headers["X-API-Key"] = self._options.api_key
-        if self._options.bearer_token:
-            headers["Authorization"] = f"Bearer {self._options.bearer_token}"
+            headers["Authorization"] = f"Bearer {self._options.api_key}"
         if per_request:
             headers.update(per_request)
         return headers
