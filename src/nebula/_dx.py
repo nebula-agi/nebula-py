@@ -12,7 +12,7 @@
 #
 # Source of truth: nebula-sdks/custom/python/_dx.py
 # The generator copies this file into sdks/python/src/nebula/_dx.py on every
-# `bun run generate`. Edit the source, not the copy.
+# `pnpm --dir nebula-sdks/generator run generate`. Edit the source, not the copy.
 
 from __future__ import annotations
 
@@ -31,22 +31,18 @@ class Nebula(NebulaClient):
     def __init__(self, options: Optional[ClientOptions] = None, **compat: Any) -> None:
         """
         Accepts either a ClientOptions instance, or the snake_case keyword
-        aliases ``api_key``, ``bearer_token``, ``base_url`` for ergonomic
+        aliases ``api_key`` and ``base_url`` for ergonomic
         construction without instantiating ClientOptions first.
         """
         if options is None:
             options = ClientOptions()
 
         api_key = _first_defined(compat.get("api_key"), options.api_key)
-        bearer_token = _first_defined(compat.get("bearer_token"), options.bearer_token)
         base_url = _first_defined(compat.get("base_url"), options.base_url)
-
-        api_key, bearer_token = _normalize_auth(api_key, bearer_token)
 
         normalized = ClientOptions(
             base_url=base_url if base_url is not None else options.base_url,
             api_key=api_key,
-            bearer_token=bearer_token,
             default_headers=options.default_headers,
             timeout_seconds=options.timeout_seconds,
             retry=options.retry,
@@ -146,29 +142,11 @@ class Nebula(NebulaClient):
 # ---------- helpers ----------
 
 
-def _normalize_auth(
-    api_key: Optional[str], bearer_token: Optional[str]
-) -> tuple[Optional[str], Optional[str]]:
-    if api_key and bearer_token is None and not _looks_like_nebula_api_key(api_key):
-        return None, api_key
-    return api_key, bearer_token
-
-
 def _first_defined(*values: Optional[Any]) -> Optional[Any]:
     for value in values:
         if value is not None:
             return value
     return None
-
-
-def _looks_like_nebula_api_key(token: str) -> bool:
-    parts = token.split(".", 1)
-    if len(parts) != 2:
-        return False
-    public_part, raw_part = parts
-    return bool(raw_part) and (
-        public_part.startswith("key_") or public_part.startswith("neb_")
-    )
 
 
 def _memory_params(
