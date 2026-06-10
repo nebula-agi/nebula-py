@@ -6,6 +6,7 @@ from typing import Any
 import httpx
 import pytest
 import respx
+from pydantic import ValidationError
 
 from nebula import (
     ClientOptions,
@@ -21,11 +22,25 @@ def _make_client(transport: httpx.MockTransport, **overrides: Any) -> NebulaClie
     options = ClientOptions(
         base_url="https://api.example.com",
         api_key=overrides.pop("api_key", None),
-        bearer_token=overrides.pop("bearer_token", None),
         transport=transport,
         **overrides,
     )
     return NebulaClient(options)
+
+
+def test_create_collection_model_rejects_blank_name() -> None:
+    with pytest.raises(ValidationError):
+        models.CreateCollectionRequest(name="")
+
+
+def test_create_collection_model_rejects_whitespace_name() -> None:
+    with pytest.raises(ValidationError):
+        models.CreateCollectionRequest(name="  ")
+
+
+def test_update_collection_model_rejects_whitespace_name() -> None:
+    with pytest.raises(ValidationError):
+        models.UpdateCollectionRequest(name="  ")
 
 
 @pytest.mark.asyncio
@@ -37,7 +52,7 @@ async def test_memories_search_sends_post_with_body_and_bearer() -> None:
         return httpx.Response(200, json={"results": [], "total_entries": 0})
 
     transport = httpx.MockTransport(handler)
-    async with _make_client(transport, bearer_token="secret") as client:
+    async with _make_client(transport, api_key="secret") as client:
         result = await client.memories.search(body={"query": "hello"})
 
     # Inline-anyOf envelope unwrap: caller sees the inner value (the
@@ -68,7 +83,7 @@ async def test_collections_list_serializes_query_params() -> None:
         await client.collections.list(cursor="MTA=", limit=5, owner_only=True)
 
     req = captured[0]
-    assert req.headers["x-api-key"] == "k1"
+    assert req.headers["authorization"] == "Bearer k1"
     # `=` in `MTA=` (base64-encoded "10") is URL-encoded as `%3D`.
     assert "cursor=MTA" in str(req.url)
     assert "limit=5" in str(req.url)
