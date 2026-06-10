@@ -305,7 +305,7 @@ class ConversationFields(BaseModel):
 
 class CreateCollectionRequest(BaseModel):
     description: str | None = Field(None, title='Description')
-    name: str = Field(..., title='Name')
+    name: str = Field(..., min_length=1, pattern='[\\s\\S]*\\S[\\s\\S]*', title='Name')
     storage_target_id: UUID | None = Field(
         None,
         description="BYOC storage target to host this collection's graph data. Requires a team workspace and an active target provisioned through the dashboard or workspace storage-target APIs.",
@@ -1044,11 +1044,15 @@ class TextContentRequest(BaseModel):
     type: Literal['text'] = Field('text', title='Type')
 
 
+class Name(RootModel[str]):
+    root: str = Field(..., min_length=1, pattern='[\\s\\S]*\\S[\\s\\S]*', title='Name')
+
+
 class UpdateCollectionRequest(BaseModel):
     access_tier: str | None = Field(None, title='Access Tier')
     description: str | None = Field(None, title='Description')
     generate_description: bool | None = Field(False, title='Generate Description')
-    name: str | None = Field(None, title='Name')
+    name: Name | None = Field(None, title='Name')
     workflows_enabled: bool | None = Field(None, title='Workflows Enabled')
 
 
@@ -1755,6 +1759,7 @@ class MemoryRecall(BaseModel):
     inference_hints: list[InferenceHint] | None = Field(None, title='Inference Hints')
     procedural: list[ActivatedProcedure] | None = Field(None, title='Procedural')
     query: str = Field(..., title='Query')
+    search_timing_ms: dict[str, float] | None = Field(None, title='Search Timing Ms')
     semantic: list[ActivatedSemantic] | None = Field(None, title='Semantic')
     sources: list[GroundedSource] | None = Field(None, title='Sources')
     total_traversal_time_ms: float | None = Field(None, title='Total Traversal Time Ms')
