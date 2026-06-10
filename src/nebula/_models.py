@@ -1755,6 +1755,7 @@ class MemoryRecall(BaseModel):
     inference_hints: list[InferenceHint] | None = Field(None, title='Inference Hints')
     procedural: list[ActivatedProcedure] | None = Field(None, title='Procedural')
     query: str = Field(..., title='Query')
+    search_timing_ms: dict[str, float] | None = Field(None, title='Search Timing Ms')
     semantic: list[ActivatedSemantic] | None = Field(None, title='Semantic')
     sources: list[GroundedSource] | None = Field(None, title='Sources')
     total_traversal_time_ms: float | None = Field(None, title='Total Traversal Time Ms')
