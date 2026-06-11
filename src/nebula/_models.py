@@ -254,6 +254,23 @@ class CompactMemoryRecallResponse(BaseModel):
     token_count: int | None = Field(0, title='Token Count')
 
 
+class CompleteMultipartUploadResponse(BaseModel):
+    byte_size: int = Field(..., title='Byte Size')
+    content_type: str = Field(..., title='Content Type')
+    raw_sha256: str = Field(..., title='Raw Sha256')
+    upload_session_id: UUID = Field(..., title='Upload Session Id')
+
+
+class CompletedMultipartUploadPart(BaseModel):
+    checksum_sha256: str = Field(
+        ...,
+        description='Base64-encoded SHA-256 checksum returned for the part.',
+        title='Checksum Sha256',
+    )
+    etag: str = Field(..., min_length=1, title='Etag')
+    part_number: int = Field(..., ge=1, le=10000, title='Part Number')
+
+
 class ConnectRequest(BaseModel):
     collection_id: UUID = Field(..., title='Collection Id')
     config: dict[str, Any] | None = Field(None, title='Config')
@@ -329,6 +346,16 @@ class Chunks1(RootModel[list[Chunks1Item]]):
         description='Pre-chunked text for document kind',
         min_length=1,
         title='Chunks',
+    )
+
+
+class ClientIdempotencyKey(RootModel[str]):
+    root: str = Field(
+        ...,
+        description='Optional client-supplied key for retrying the same create request without creating duplicate ingestion work.',
+        max_length=256,
+        min_length=1,
+        title='Client Idempotency Key',
     )
 
 
@@ -559,6 +586,22 @@ class FileContentRequest(BaseModel):
     )
 
 
+class FileReferenceRequest(BaseModel):
+    """
+    Reference to a file uploaded through an upload session.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    type: Literal['file_ref'] = Field('file_ref', title='Type')
+    upload_session_id: UUID = Field(
+        ...,
+        description='Upload session returned by memories.createUpload.',
+        title='Upload Session Id',
+    )
+
+
 class GenericBooleanResponse(BaseModel):
     success: bool = Field(..., title='Success')
 
@@ -713,6 +756,26 @@ class MessageType(Enum):
     tool = 'tool'
 
 
+class MultipartUploadPartResponse(BaseModel):
+    expires_in: int = Field(..., title='Expires In')
+    part_number: int = Field(..., title='Part Number')
+    upload_headers: dict[str, str] = Field(..., title='Upload Headers')
+    upload_url: str = Field(..., title='Upload Url')
+
+
+class MultipartUploadSessionResponse(BaseModel):
+    expires_in: int = Field(..., title='Expires In')
+    max_size: int = Field(..., title='Max Size')
+    part_size: int = Field(
+        ..., description='Recommended upload part size in bytes.', title='Part Size'
+    )
+    upload_session_id: UUID = Field(
+        ...,
+        description='Upload session ID to reference in memory creation.',
+        title='Upload Session Id',
+    )
+
+
 class PaginatedCollectionResponse(BaseModel):
     """
     Cursor-paginated list of CollectionResponse entries. The wire envelope is ``{data, next_cursor, has_more}``.
@@ -763,16 +826,6 @@ class PredictRecallRequest(BaseModel):
         description="Anchor: the user's most recent trace id. The handler resolves this trace's state_before automatically.",
         title='Trace Id',
     )
-
-
-class PresignedUploadResponse(BaseModel):
-    bucket: str = Field(..., title='Bucket')
-    download_url: str = Field(..., title='Download Url')
-    expires_in: int = Field(..., title='Expires In')
-    max_size: int = Field(..., title='Max Size')
-    s3_key: str = Field(..., title='S3 Key')
-    upload_headers: dict[str, str] = Field(..., title='Upload Headers')
-    upload_url: str = Field(..., title='Upload Url')
 
 
 class RelationshipRecord(BaseModel):
@@ -828,27 +881,6 @@ class ResumeRecallRequest(BaseModel):
         description="Anchor: the user's most recent trace id. The handler resolves this trace's state_before automatically.",
         title='Trace Id',
     )
-
-
-class S3FileReferenceRequest(BaseModel):
-    """
-    Reference to a file uploaded to S3 (for large files).
-    """
-
-    bucket: str | None = Field(
-        None, description='S3 bucket (uses default if not specified)', title='Bucket'
-    )
-    filename: str | None = Field(
-        None, description='Original filename', title='Filename'
-    )
-    media_type: str | None = Field(
-        'application/octet-stream', description='MIME type', title='Media Type'
-    )
-    s3_key: str = Field(..., description='S3 object key', title='S3 Key')
-    size_bytes: int | None = Field(
-        None, description='File size in bytes', title='Size Bytes'
-    )
-    type: Literal['s3_ref'] = Field('s3_ref', title='Type')
 
 
 class SearchEffort(Enum):
@@ -1103,6 +1135,10 @@ class WrappedCompactMemoryRecallResponse(BaseModel):
     results: CompactMemoryRecallResponse
 
 
+class WrappedCompleteMultipartUploadResponse(BaseModel):
+    results: CompleteMultipartUploadResponse
+
+
 class WrappedConnectorConnectResponse(BaseModel):
     results: ConnectorConnectResponse
 
@@ -1135,8 +1171,12 @@ class WrappedMemoryCreateAcceptedResponse(BaseModel):
     results: MemoryCreateAcceptedResponse
 
 
-class WrappedPresignedUploadResponse(BaseModel):
-    results: PresignedUploadResponse
+class WrappedMultipartUploadPartResponse(BaseModel):
+    results: MultipartUploadPartResponse
+
+
+class WrappedMultipartUploadSessionResponse(BaseModel):
+    results: MultipartUploadSessionResponse
 
 
 class WrappedSnapshotImportResult(BaseModel):
@@ -1182,9 +1222,9 @@ class ActivatedWorkflow(BaseModel):
 
 
 class Content11(
-    RootModel[TextContentRequest | FileContentRequest | S3FileReferenceRequest]
+    RootModel[TextContentRequest | FileContentRequest | FileReferenceRequest]
 ):
-    root: TextContentRequest | FileContentRequest | S3FileReferenceRequest = Field(
+    root: TextContentRequest | FileContentRequest | FileReferenceRequest = Field(
         ..., discriminator='type'
     )
 
@@ -1272,6 +1312,16 @@ class AppendMemoryRequest(BaseModel):
 class BatchDeleteResponse(BaseModel):
     message: str = Field(..., title='Message')
     results: BatchDeleteResult
+
+
+class CompleteMultipartUploadRequest(BaseModel):
+    expected_sha256: str = Field(
+        ...,
+        description='Full-object SHA-256 hex digest.',
+        pattern='^[0-9a-f]{64}$',
+        title='Expected Sha256',
+    )
+    parts: list[CompletedMultipartUploadPart] = Field(..., min_length=1, title='Parts')
 
 
 class ConnectorConnectionResponse(BaseModel):
@@ -1666,6 +1716,11 @@ class CreateMemoryRequest(BaseModel):
     )
     chunks: Chunks1 | None = Field(
         None, description='Pre-chunked text for document kind', title='Chunks'
+    )
+    client_idempotency_key: ClientIdempotencyKey | None = Field(
+        None,
+        description='Optional client-supplied key for retrying the same create request without creating duplicate ingestion work.',
+        title='Client Idempotency Key',
     )
     collection_id: UUID | None = Field(
         None,
