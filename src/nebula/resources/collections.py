@@ -52,8 +52,9 @@ class CollectionsResource:
 
         This endpoint allows deletion of a collection identified by its
         UUID. The user must have appropriate permissions to delete the
-        collection. Deleting a collection removes all associations but does
-        not delete the engrams within it.
+        collection. The collection is marked as deleting immediately and
+        graph/S3 cleanup continues asynchronously. Deleting a collection
+        removes all associations but does not delete the engrams within it.
 
         operationId: collections.delete
         endpoint: DELETE /v1/collections/{id}
