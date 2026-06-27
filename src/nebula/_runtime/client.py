@@ -28,11 +28,9 @@ def _serialize_body(body: Any) -> Any:
     from "absent" for optional fields.
 
     `warnings='none'` silences Pydantic's serializer warnings during dump.
-    Those warnings fire when a string is stored in a field typed as an
-    enum (e.g. `ingestion_mode='fast'`), which is currently produced by
-    datamodel-code-generator's enum-default emission. The wire output is
-    still correct (Pydantic emits the string verbatim). The root fix
-    belongs in the generator's dmcg config, not here — see TODO.
+    Those warnings can fire when generated model defaults are represented
+    in a shape Pydantic does not expect, while the wire output remains
+    correct.
     """
     if isinstance(body, BaseModel):
         return body.model_dump(mode="json", by_alias=True, warnings="none")
