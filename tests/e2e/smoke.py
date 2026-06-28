@@ -95,7 +95,7 @@ async def main() -> None:
                     "raw_text": "e2e smoke test memory",
                 })
             except NebulaServerError as err:
-                print(f"  (got 500: {err.type}, likely Hatchet outage — set NEBULA_E2E_SKIP_INGESTION=1 to skip)")
+                print(f"  (got 500: {err.type}, likely Orchestration outage — set NEBULA_E2E_SKIP_INGESTION=1 to skip)")
 
         # 7. Clean up
         deleted = await client.collections.delete(id=str(collection_id))
