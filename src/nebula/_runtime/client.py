@@ -28,11 +28,9 @@ def _serialize_body(body: Any) -> Any:
     from "absent" for optional fields.
 
     `warnings='none'` silences Pydantic's serializer warnings during dump.
-    Those warnings fire when a string is stored in a field typed as an
-    enum (e.g. `ingestion_mode='fast'`), which is currently produced by
-    datamodel-code-generator's enum-default emission. The wire output is
-    still correct (Pydantic emits the string verbatim). The root fix
-    belongs in the generator's dmcg config, not here — see TODO.
+    Those warnings can fire when generated model defaults are represented
+    in a shape Pydantic does not expect, while the wire output remains
+    correct.
     """
     if isinstance(body, BaseModel):
         return body.model_dump(mode="json", by_alias=True, warnings="none")
@@ -69,6 +67,7 @@ class RequestArgs(TypedDict, total=False):
     query: Mapping[str, Any]
     body: Any
     headers: Mapping[str, str]
+    routing: Mapping[str, Any]
     idempotent: bool
 
 
@@ -161,7 +160,16 @@ class NebulaCore:
         query = self._filter_query(args.get("query"))
         body = _serialize_body(args.get("body"))
         has_body = body is not None
-        headers = self._build_headers(args.get("headers"), has_body)
+        route_headers = _routing_headers_for_request(
+            body=body,
+            path_params=args.get("path_params") or {},
+            query=query,
+            routing=args.get("routing"),
+        )
+        headers = self._build_headers(
+            {**route_headers, **dict(args.get("headers") or {})},
+            has_body,
+        )
         idempotent = bool(args.get("idempotent", False))
 
         max_attempts = self._options.retry.max_retries + 1 if idempotent else 1
@@ -227,3 +235,50 @@ def _quote(value: str) -> str:
     from urllib.parse import quote
 
     return quote(value, safe="")
+
+
+def _routing_headers_for_request(
+    *,
+    body: Any,
+    path_params: Mapping[str, Any],
+    query: Any,
+    routing: Optional[Mapping[str, Any]],
+) -> dict[str, str]:
+    if not routing:
+        return {}
+    header = routing.get("header")
+    body_fields = routing.get("body_fields")
+    query_fields = routing.get("query_fields")
+    path_fields = routing.get("path_fields")
+    if (
+        not isinstance(header, str)
+        or not _valid_field_list(body_fields)
+        or not _valid_field_list(query_fields)
+        or not _valid_field_list(path_fields)
+    ):
+        return {}
+    route_id = (
+        _string_field(body, *(body_fields or []))
+        or _string_field(query, *(query_fields or []))
+        or _string_field(path_params, *(path_fields or []))
+    )
+    return {header: route_id} if route_id else {}
+
+
+def _valid_field_list(value: Any) -> bool:
+    return value is None or (
+        isinstance(value, list) and all(isinstance(field, str) for field in value)
+    )
+
+
+def _string_field(
+    body: Any,
+    *names: str,
+) -> Optional[str]:
+    if not isinstance(body, Mapping):
+        return None
+    for name in names:
+        value = body.get(name)
+        if isinstance(value, str) and value:
+            return value
+    return None
