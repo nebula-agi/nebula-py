@@ -69,6 +69,150 @@ async def test_memories_search_sends_post_with_body_and_bearer() -> None:
 
 
 @pytest.mark.asyncio
+async def test_single_collection_search_derives_edge_routing_header() -> None:
+    captured: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.append(request)
+        return httpx.Response(200, json={"results": [], "total_entries": 0})
+
+    transport = httpx.MockTransport(handler)
+    async with _make_client(transport) as client:
+        await client.memories.search(
+            body={
+                "query": "hello",
+                "collection_ids": ["33333333-3333-4333-8333-333333333333"],
+            }
+        )
+        await client.memories.search(
+            body={
+                "query": "hello",
+                "collection_ids": [
+                    "33333333-3333-4333-8333-333333333333",
+                    "44444444-4444-4444-8444-444444444444",
+                ],
+            }
+        )
+
+    assert (
+        captured[0].headers["x-nebula-collection-id"]
+        == "33333333-3333-4333-8333-333333333333"
+    )
+    assert "x-nebula-collection-id" not in captured[1].headers
+
+
+@pytest.mark.asyncio
+async def test_filter_scoped_search_derives_edge_routing_header() -> None:
+    captured: list[httpx.Request] = []
+    collection_id = "33333333-3333-4333-8333-333333333333"
+    other_collection_id = "44444444-4444-4444-8444-444444444444"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.append(request)
+        return httpx.Response(200, json={"results": [], "total_entries": 0})
+
+    transport = httpx.MockTransport(handler)
+    async with _make_client(transport) as client:
+        await client.memories.search(
+            body={
+                "query": "hello",
+                "filters": {
+                    "collection_ids": {"$overlap": [collection_id]},
+                },
+            }
+        )
+        await client.memories.search(
+            body={
+                "query": "hello",
+                "filters": {
+                    "collection_ids": {
+                        "$overlap": [collection_id, other_collection_id]
+                    }
+                },
+            }
+        )
+        await client.memories.search(
+            body={"query": "hello", "collection_id": collection_id}
+        )
+
+    assert captured[0].headers["x-nebula-collection-id"] == collection_id
+    assert "x-nebula-collection-id" not in captured[1].headers
+    assert "x-nebula-collection-id" not in captured[2].headers
+
+
+@pytest.mark.asyncio
+async def test_write_calls_derive_edge_routing_headers_from_body_ids() -> None:
+    captured: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.append(request)
+        if request.url.path == "/v1/collections":
+            return httpx.Response(200, json={"results": {"id": "collection-id"}})
+        if request.url.path == "/v1/memories":
+            return httpx.Response(
+                200,
+                json={"results": {"id": "memory-id", "message": "ok"}},
+            )
+        return httpx.Response(200, json={"results": {"message": "ok"}})
+
+    transport = httpx.MockTransport(handler)
+    options = ClientOptions(
+        base_url="https://api.example.com",
+        transport=transport,
+    )
+    async with NebulaClient(options) as client:
+        await client.collections.create(body={"name": "Personal collection"})
+        await client.collections.create(
+            body={
+                "name": "Team collection",
+                "workspace_id": "22222222-2222-4222-8222-222222222222",
+            }
+        )
+        await client.memories.create(
+            body={
+                "collection_id": "33333333-3333-4333-8333-333333333333",
+                "raw_text": "hello",
+            }
+        )
+        await client.memories.append(
+            id="44444444-4444-4444-8444-444444444444",
+            body={
+                "collection_id": "55555555-5555-4555-8555-555555555555",
+                "raw_text": "more",
+            },
+        )
+
+    assert "x-nebula-workspace-id" not in captured[0].headers
+    assert (
+        captured[1].headers["x-nebula-workspace-id"]
+        == "22222222-2222-4222-8222-222222222222"
+    )
+    assert (
+        captured[2].headers["x-nebula-collection-id"]
+        == "33333333-3333-4333-8333-333333333333"
+    )
+    assert (
+        captured[3].headers["x-nebula-collection-id"]
+        == "55555555-5555-4555-8555-555555555555"
+    )
+
+
+@pytest.mark.asyncio
+async def test_zero_config_personal_collection_create_omits_routing_header() -> None:
+    captured: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.append(request)
+        return httpx.Response(200, json={"results": {"id": "collection-id"}})
+
+    transport = httpx.MockTransport(handler)
+    async with _make_client(transport) as client:
+        await client.collections.create(body={"name": "Personal collection"})
+
+    assert "x-nebula-workspace-id" not in captured[0].headers
+
+
+@pytest.mark.asyncio
 async def test_collections_list_serializes_query_params() -> None:
     captured: list[httpx.Request] = []
 
@@ -214,9 +358,7 @@ async def test_request_body_accepts_pydantic_model_instance() -> None:
 
 
 @pytest.mark.asyncio
-async def test_request_body_list_of_strings_passes_through_unchanged() -> None:
-    """`DeleteMemoriesRequest` is `anyOf[str, list[str]]` — confirms the
-    list path in _serialize_body doesn't mangle plain-string lists."""
+async def test_delete_many_collection_scoped_body_sets_routing_header() -> None:
     captured: list[httpx.Request] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -225,11 +367,14 @@ async def test_request_body_list_of_strings_passes_through_unchanged() -> None:
 
     transport = httpx.MockTransport(handler)
     async with _make_client(transport) as client:
-        await client.memories.delete_many(body=["id-1", "id-2"])
+        await client.memories.delete_many(
+            body={"collection_id": "collection-1", "ids": ["id-1", "id-2"]}
+        )
 
     import json
     sent = json.loads(captured[0].content)
-    assert sent == ["id-1", "id-2"]
+    assert captured[0].headers["x-nebula-collection-id"] == "collection-1"
+    assert sent == {"collection_id": "collection-1", "ids": ["id-1", "id-2"]}
 
 
 def test_serialize_body_handles_list_of_pydantic_models() -> None:
