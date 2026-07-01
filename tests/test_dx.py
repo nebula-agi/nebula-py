@@ -125,13 +125,20 @@ async def test_memories_delete_hits_path_by_id() -> None:
         return httpx.Response(204)
 
     async with _make_dx(httpx.MockTransport(handler)) as client:
-        await client.memories.delete(id="mem_to_delete")
+        await client.memories.delete(
+            id="mem_to_delete",
+            collection_id="collection-1",
+        )
     assert captured[0].method == "DELETE"
-    assert str(captured[0].url) == "https://api.example.com/v1/memories/mem_to_delete"
+    assert (
+        str(captured[0].url)
+        == "https://api.example.com/v1/memories/mem_to_delete?collection_id=collection-1"
+    )
+    assert captured[0].headers["x-nebula-collection-id"] == "collection-1"
 
 
 @pytest.mark.asyncio
-async def test_memories_delete_many_takes_id_list_as_body() -> None:
+async def test_memories_delete_many_takes_collection_scoped_body() -> None:
     captured: list[httpx.Request] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -139,12 +146,15 @@ async def test_memories_delete_many_takes_id_list_as_body() -> None:
         return httpx.Response(200, json={"results": {"succeeded": 2}})
 
     async with _make_dx(httpx.MockTransport(handler)) as client:
-        await client.memories.delete_many(body=["a", "b"])
+        await client.memories.delete_many(
+            body={"collection_id": "collection-1", "ids": ["a", "b"]}
+        )
     assert captured[0].method == "POST"
     assert str(captured[0].url) == "https://api.example.com/v1/memories/delete"
+    assert captured[0].headers["x-nebula-collection-id"] == "collection-1"
     import json
     body = json.loads(captured[0].content)
-    assert body == ["a", "b"]
+    assert body == {"collection_id": "collection-1", "ids": ["a", "b"]}
 
 
 @pytest.mark.asyncio
@@ -193,5 +203,3 @@ async def test_list_memories_string_becomes_collection_ids() -> None:
     async with _make_dx(httpx.MockTransport(handler)) as client:
         await client.list_memories("collection-abc")
     assert "collection_ids=collection-abc" in str(captured[0].url)
-
-
