@@ -38,6 +38,32 @@ class WorkspacesResource:
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
+    async def disable_managed_encryption(
+        self,
+        workspace_id: str
+    ) -> models.WorkspaceEncryptionResponse:
+        """Disable workspace managed encryption for new writes
+
+        Stop encrypting new writes under the workspace key. The key stays
+        enabled so existing objects remain readable; scheduling key deletion
+        is a separate, gated operation.
+
+        operationId: workspaces.disableManagedEncryption
+        endpoint: POST /v1/workspaces/{workspace_id}/encryption/disable
+        """
+        _raw = await self._core.request({
+            "method": "POST",
+            "path": "/v1/workspaces/{workspace_id}/encryption/disable",
+            "path_params": {"workspace_id": workspace_id},
+            "query": None,
+            "idempotent": False,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.WorkspaceEncryptionResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
     async def disable_storage_target(
         self,
         workspace_id: str,
@@ -60,6 +86,57 @@ class WorkspacesResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.StorageTargetResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
+    async def enable_managed_encryption(
+        self,
+        workspace_id: str
+    ) -> models.WorkspaceEncryptionResponse:
+        """Enable workspace managed encryption
+
+        Provision a dedicated Nebula-managed KMS key for the workspace and
+        encrypt new graph-plane object writes under it. Forward-only:
+        existing objects are re-encrypted lazily as data is rewritten, not
+        immediately.
+
+        operationId: workspaces.enableManagedEncryption
+        endpoint: POST /v1/workspaces/{workspace_id}/encryption/enable
+        """
+        _raw = await self._core.request({
+            "method": "POST",
+            "path": "/v1/workspaces/{workspace_id}/encryption/enable",
+            "path_params": {"workspace_id": workspace_id},
+            "query": None,
+            "idempotent": False,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.WorkspaceEncryptionResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
+    async def get_managed_encryption(
+        self,
+        workspace_id: str
+    ) -> models.WorkspaceEncryptionResponse:
+        """Get workspace managed encryption status
+
+        Current managed-encryption status for the workspace.
+
+        operationId: workspaces.getManagedEncryption
+        endpoint: GET /v1/workspaces/{workspace_id}/encryption
+        """
+        _raw = await self._core.request({
+            "method": "GET",
+            "path": "/v1/workspaces/{workspace_id}/encryption",
+            "path_params": {"workspace_id": workspace_id},
+            "query": None,
+            "idempotent": True,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.WorkspaceEncryptionResponse.model_validate(_raw)
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
