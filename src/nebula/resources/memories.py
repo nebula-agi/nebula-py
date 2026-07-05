@@ -38,11 +38,38 @@ class MemoriesResource:
             "path_params": {"id": id},
             "query": None,
             "body": body,
+            "routing": {"owner": "collection", "body_fields": ["collection_id","collectionId"]},
             "idempotent": False,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return _validate_response(Union[models.AppendMemoryResponse, models.IngestionResponse], _raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
+    async def complete_upload(
+        self,
+        upload_session_id: str,
+        body: models.CompleteMultipartUploadRequest
+    ) -> models.CompleteMultipartUploadResponse:
+        """Complete multipart upload session
+
+        Finalize an upload session after every multipart upload part has been uploaded.
+
+        operationId: memories.completeUpload
+        endpoint: POST /v1/memories/upload/{upload_session_id}/complete
+        """
+        _raw = await self._core.request({
+            "method": "POST",
+            "path": "/v1/memories/upload/{upload_session_id}/complete",
+            "path_params": {"upload_session_id": upload_session_id},
+            "query": None,
+            "body": body,
+            "idempotent": False,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.CompleteMultipartUploadResponse.model_validate(_raw)
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
@@ -71,6 +98,7 @@ class MemoriesResource:
             "path_params": {},
             "query": None,
             "body": body,
+            "routing": {"owner": "collection", "body_fields": ["collection_id","collectionId"]},
             "idempotent": False,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
@@ -83,28 +111,15 @@ class MemoriesResource:
         self,
         filename: str,
         content_type: str,
-        file_size: int
-    ) -> models.PresignedUploadResponse:
-        """Get presigned URL for large file upload
+        file_size: int,
+        *,
+        collection_id: Optional[Union[str, None]] = None,
+        workspace_id: Optional[Union[str, None]] = None,
+        client_idempotency_key: Optional[Union[str, None]] = None
+    ) -> models.MultipartUploadSessionResponse:
+        """Create multipart upload session
 
-        Get a presigned URL for uploading large files directly to S3.
-
-        Use this for files larger than 5MB that cannot be sent inline as base64.
-        After uploading, reference the file in memory creation using S3FileReference.
-
-        Args:
-            filename: Original filename (e.g., "image.jpg")
-            content_type: MIME type (e.g., "image/jpeg", "application/pdf")
-            file_size: Expected file size in bytes (max 100MB)
-
-        Returns:
-            dict with:
-            - upload_url: Presigned URL for PUT request (expires in 1 hour)
-            - upload_headers: Headers that must be sent with the presigned PUT request
-            - s3_key: The S3 key to reference in memory creation
-            - bucket: S3 bucket name
-            - expires_in: Seconds until URL expires
-            - max_size: Maximum allowed file size
+        Create a workspace-scoped multipart upload session.
 
         operationId: memories.createUpload
         endpoint: POST /v1/memories/upload
@@ -113,18 +128,20 @@ class MemoriesResource:
             "method": "POST",
             "path": "/v1/memories/upload",
             "path_params": {},
-            "query": {"filename": filename, "content_type": content_type, "file_size": file_size},
+            "query": {"filename": filename, "content_type": content_type, "file_size": file_size, "collection_id": collection_id, "workspace_id": workspace_id, "client_idempotency_key": client_idempotency_key},
+            "routing": {"owner": "collection", "query_fields": ["collection_id","collectionId"]},
             "idempotent": False,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
-            return models.PresignedUploadResponse.model_validate(_raw)
+            return models.MultipartUploadSessionResponse.model_validate(_raw)
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def delete(
         self,
-        id: str
+        id: str,
+        collection_id: str
     ) -> models.GenericBooleanResponse:
         """Delete an engram
 
@@ -142,7 +159,8 @@ class MemoriesResource:
             "method": "DELETE",
             "path": "/v1/memories/{id}",
             "path_params": {"id": id},
-            "query": None,
+            "query": {"collection_id": collection_id},
+            "routing": {"owner": "collection", "query_fields": ["collection_id","collectionId"]},
             "idempotent": False,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
@@ -178,18 +196,18 @@ class MemoriesResource:
             "path_params": {},
             "query": None,
             "body": body,
+            "routing": {"owner": "collection", "body_fields": ["collection_id","collectionId"]},
             "idempotent": False,
         })
         return _raw
 
     async def delete_upload(
         self,
-        s3_key: str
+        upload_session_id: str
     ) -> models.GenericMessageResponse:
-        """Delete a previously uploaded S3 file
+        """Delete a pending upload session
 
-        Delete a file from S3 that was uploaded via a presigned URL.
-        Verifies the caller owns the file via S3 object metadata.
+        Delete a pending upload session and its staged object.
 
         operationId: memories.deleteUpload
         endpoint: DELETE /v1/memories/upload
@@ -198,7 +216,7 @@ class MemoriesResource:
             "method": "DELETE",
             "path": "/v1/memories/upload",
             "path_params": {},
-            "query": {"s3_key": s3_key},
+            "query": {"upload_session_id": upload_session_id},
             "idempotent": True,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
@@ -331,6 +349,7 @@ class MemoriesResource:
             "path_params": {},
             "query": None,
             "body": body,
+            "routing": {"owner": "collection", "body_fields": ["collection_ids","collectionIds","filters.collection_id","filters.collection_ids","search_settings.filters.collection_id","search_settings.filters.collection_ids"]},
             "idempotent": False,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
@@ -339,12 +358,37 @@ class MemoriesResource:
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
+    async def sign_upload_part(
+        self,
+        upload_session_id: str,
+        part_number: int,
+        checksum_sha256: str
+    ) -> models.MultipartUploadPartResponse:
+        """Create multipart upload part URL
+
+        Create a presigned URL for uploading one part of an existing memory upload session.
+
+        operationId: memories.signUploadPart
+        endpoint: POST /v1/memories/upload/{upload_session_id}/parts/{part_number}
+        """
+        _raw = await self._core.request({
+            "method": "POST",
+            "path": "/v1/memories/upload/{upload_session_id}/parts/{part_number}",
+            "path_params": {"upload_session_id": upload_session_id, "part_number": part_number},
+            "query": {"checksum_sha256": checksum_sha256},
+            "idempotent": False,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.MultipartUploadPartResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
     async def update(
         self,
         id: str,
-        body: models.UpdateMemoryRequest,
-        *,
-        collection_id: Optional[Union[str, None]] = None
+        collection_id: str,
+        body: models.UpdateMemoryRequest
     ) -> models.Engram:
         """Update a memory
 
@@ -371,6 +415,7 @@ class MemoriesResource:
             "path_params": {"id": id},
             "query": {"collection_id": collection_id},
             "body": body,
+            "routing": {"owner": "collection", "query_fields": ["collection_id","collectionId"]},
             "idempotent": False,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
