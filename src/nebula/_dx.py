@@ -202,7 +202,6 @@ def _memory_append_params(body: Mapping[str, Any]) -> dict[str, Any]:
     for key in (
         "metadata",
         "ingestion_config",
-        "ingestion_mode",
         "raw_text",
         "chunks",
         "messages",
