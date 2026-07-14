@@ -88,6 +88,30 @@ class ConnectorsResource:
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
+    async def list_oauth_apps(
+        self,
+        collection_id: str
+    ) -> list[models.ConnectorOAuthAppResponse]:
+        """List workspace connector OAuth app registrations
+
+        Return the workspace-level OAuth app registrations used by Google and Microsoft 365 connectors for the requested collection's workspace. Client secrets are never returned.
+
+        operationId: connectors.listOAuthApps
+        endpoint: GET /v1/connectors/oauth-apps
+        """
+        _raw = await self._core.request({
+            "method": "GET",
+            "path": "/v1/connectors/oauth-apps",
+            "path_params": {},
+            "query": {"collection_id": collection_id},
+            "idempotent": True,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return _validate_response(list[models.ConnectorOAuthAppResponse], _raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
     async def list_providers(
         self
     ) -> list[str]:
@@ -153,5 +177,31 @@ class ConnectorsResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.ConnectorSyncResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
+    async def update_oauth_app(
+        self,
+        provider_family: str,
+        body: models.ConnectorOAuthAppUpdateRequest
+    ) -> models.ConnectorOAuthAppResponse:
+        """Update a workspace connector OAuth app
+
+        Update non-secret workspace OAuth app settings for a collection's workspace. Google apps can provide Pub/Sub settings to enable Gmail real-time sync. Client secrets are never returned.
+
+        operationId: connectors.updateOAuthApp
+        endpoint: PATCH /v1/connectors/oauth-apps/{provider_family}
+        """
+        _raw = await self._core.request({
+            "method": "PATCH",
+            "path": "/v1/connectors/oauth-apps/{provider_family}",
+            "path_params": {"provider_family": provider_family},
+            "query": None,
+            "body": body,
+            "idempotent": False,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.ConnectorOAuthAppResponse.model_validate(_raw)
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
