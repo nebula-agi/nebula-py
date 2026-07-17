@@ -23,22 +23,24 @@ def _serialize_body(body: Any) -> Any:
     to serialize `BaseModel` instances. Generated method signatures expose
     bodies as typed Pydantic models for autocomplete DX, so the runtime
     is the right layer to dump them. We use `mode='json'` so nested types
-    like datetimes / UUIDs become wire-ready strings; we do NOT set
-    `exclude_none=True` because the API may distinguish explicit `null`
-    from "absent" for optional fields.
+    like datetimes / UUIDs become wire-ready strings. `exclude_unset=True`
+    preserves the distinction between omitted fields and explicitly supplied
+    defaults or nulls.
 
     `warnings='none'` silences Pydantic's serializer warnings during dump.
-    Those warnings fire when a string is stored in a field typed as an
-    enum (e.g. `ingestion_mode='fast'`), which is currently produced by
-    datamodel-code-generator's enum-default emission. The wire output is
-    still correct (Pydantic emits the string verbatim). The root fix
-    belongs in the generator's dmcg config, not here — see TODO.
+    Those warnings can fire when generated model defaults are represented
+    in a shape Pydantic does not expect, while the wire output remains
+    correct.
     """
     if isinstance(body, BaseModel):
-        return body.model_dump(mode="json", by_alias=True, warnings="none")
+        return body.model_dump(
+            mode="json", by_alias=True, exclude_unset=True, warnings="none"
+        )
     if isinstance(body, list):
         return [
-            item.model_dump(mode="json", by_alias=True, warnings="none")
+            item.model_dump(
+                mode="json", by_alias=True, exclude_unset=True, warnings="none"
+            )
             if isinstance(item, BaseModel)
             else item
             for item in body
@@ -69,6 +71,7 @@ class RequestArgs(TypedDict, total=False):
     query: Mapping[str, Any]
     body: Any
     headers: Mapping[str, str]
+    routing: Mapping[str, Any]
     idempotent: bool
 
 
@@ -161,7 +164,16 @@ class NebulaCore:
         query = self._filter_query(args.get("query"))
         body = _serialize_body(args.get("body"))
         has_body = body is not None
-        headers = self._build_headers(args.get("headers"), has_body)
+        route_headers = _routing_headers_for_request(
+            body=body,
+            path_params=args.get("path_params") or {},
+            query=query,
+            routing=args.get("routing"),
+        )
+        headers = self._build_headers(
+            {**route_headers, **dict(args.get("headers") or {})},
+            has_body,
+        )
         idempotent = bool(args.get("idempotent", False))
 
         max_attempts = self._options.retry.max_retries + 1 if idempotent else 1
@@ -227,3 +239,78 @@ def _quote(value: str) -> str:
     from urllib.parse import quote
 
     return quote(value, safe="")
+
+
+def _routing_headers_for_request(
+    *,
+    body: Any,
+    path_params: Mapping[str, Any],
+    query: Any,
+    routing: Optional[Mapping[str, Any]],
+) -> dict[str, str]:
+    if not routing:
+        return {}
+    owner = routing.get("owner")
+    body_fields = routing.get("body_fields")
+    query_fields = routing.get("query_fields")
+    path_fields = routing.get("path_fields")
+    if (
+        not isinstance(owner, str)
+        or not _valid_field_list(body_fields)
+        or not _valid_field_list(query_fields)
+        or not _valid_field_list(path_fields)
+    ):
+        return {}
+    route_id = (
+        _string_field(body, *(body_fields or []))
+        or _string_field(query, *(query_fields or []))
+        or _string_field(path_params, *(path_fields or []))
+    )
+    return {"X-Nebula-Owner-Key": f"{owner}:{route_id}"} if route_id else {}
+
+
+def _valid_field_list(value: Any) -> bool:
+    return value is None or (
+        isinstance(value, list) and all(isinstance(field, str) for field in value)
+    )
+
+
+def _string_field(
+    body: Any,
+    *names: str,
+) -> Optional[str]:
+    if not isinstance(body, Mapping):
+        return None
+    for name in names:
+        route_id = _route_id_value(_nested_field(body, name))
+        if route_id:
+            return route_id
+    return None
+
+
+def _nested_field(body: Mapping[str, Any], path: str) -> Any:
+    current: Any = body
+    for part in path.split("."):
+        if not isinstance(current, Mapping):
+            return None
+        current = current.get(part)
+    return current
+
+
+def _route_id_value(value: Any) -> Optional[str]:
+    if isinstance(value, str) and value:
+        return value
+    if (
+        isinstance(value, list)
+        and len(value) == 1
+        and isinstance(value[0], str)
+        and value[0]
+    ):
+        return value[0]
+    if isinstance(value, Mapping):
+        if "$eq" in value:
+            return _route_id_value(value.get("$eq"))
+        for op in ("$in", "$overlap"):
+            if op in value:
+                return _route_id_value(value.get(op))
+    return None
