@@ -2,10 +2,14 @@
 # Source: nebula-sdks/openapi/openapi.json
 
 from __future__ import annotations
-from typing import Any, Optional, Union
+from typing import Any, Mapping, Optional, Union
 from pydantic import ValidationError
 from .. import _models as models
-from .._runtime import NebulaCore, validate_response as _validate_response
+from .._runtime import (
+    NebulaCore,
+    validate_request_body as _validate_request_body,
+    validate_response as _validate_response,
+)
 
 
 class ConnectorsResource:
@@ -15,7 +19,7 @@ class ConnectorsResource:
     async def connect(
         self,
         provider: str,
-        body: models.ConnectRequest
+        body: Union[models.ConnectRequest, Mapping[str, Any]]
     ) -> models.ConnectorConnectResponse:
         """Start OAuth connection flow
 
@@ -24,6 +28,7 @@ class ConnectorsResource:
         operationId: connectors.connect
         endpoint: POST /v1/connectors/{provider}/connect
         """
+        body = _validate_request_body(models.ConnectRequest, body)
         _raw = await self._core.request({
             "method": "POST",
             "path": "/v1/connectors/{provider}/connect",
@@ -85,6 +90,30 @@ class ConnectorsResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return _validate_response(list[models.ConnectorConnectionResponse], _raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
+    async def list_oauth_apps(
+        self,
+        collection_id: str
+    ) -> list[models.ConnectorOAuthAppResponse]:
+        """List workspace connector OAuth app registrations
+
+        Return the workspace-level OAuth app registrations used by Google and Microsoft 365 connectors for the requested collection's workspace. Client secrets are never returned.
+
+        operationId: connectors.listOAuthApps
+        endpoint: GET /v1/connectors/oauth-apps
+        """
+        _raw = await self._core.request({
+            "method": "GET",
+            "path": "/v1/connectors/oauth-apps",
+            "path_params": {},
+            "query": {"collection_id": collection_id},
+            "idempotent": True,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return _validate_response(list[models.ConnectorOAuthAppResponse], _raw)
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
@@ -153,5 +182,32 @@ class ConnectorsResource:
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.ConnectorSyncResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
+    async def update_oauth_app(
+        self,
+        provider_family: str,
+        body: Union[models.ConnectorOAuthAppUpdateRequest, Mapping[str, Any]]
+    ) -> models.ConnectorOAuthAppResponse:
+        """Update a workspace connector OAuth app
+
+        Update non-secret workspace OAuth app settings for a collection's workspace. Google apps can provide Pub/Sub settings to enable Gmail real-time sync. Client secrets are never returned.
+
+        operationId: connectors.updateOAuthApp
+        endpoint: PATCH /v1/connectors/oauth-apps/{provider_family}
+        """
+        body = _validate_request_body(models.ConnectorOAuthAppUpdateRequest, body)
+        _raw = await self._core.request({
+            "method": "PATCH",
+            "path": "/v1/connectors/oauth-apps/{provider_family}",
+            "path_params": {"provider_family": provider_family},
+            "query": None,
+            "body": body,
+            "idempotent": False,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.ConnectorOAuthAppResponse.model_validate(_raw)
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
