@@ -2,10 +2,14 @@
 # Source: nebula-sdks/openapi/openapi.json
 
 from __future__ import annotations
-from typing import Any, Optional, Union
+from typing import Any, Mapping, Optional, Union
 from pydantic import ValidationError
 from .. import _models as models
-from .._runtime import NebulaCore, validate_response as _validate_response
+from .._runtime import (
+    NebulaCore,
+    validate_request_body as _validate_request_body,
+    validate_response as _validate_response,
+)
 
 
 class MemoriesResource:
@@ -15,7 +19,7 @@ class MemoriesResource:
     async def append(
         self,
         id: str,
-        body: models.AppendMemoryRequest
+        body: Union[models.AppendMemoryRequest, Mapping[str, Any]]
     ) -> Union[models.AppendMemoryResponse, models.IngestionResponse]:
         """Append content to an engram
 
@@ -32,12 +36,14 @@ class MemoriesResource:
         operationId: memories.append
         endpoint: POST /v1/memories/{id}/append
         """
+        body = _validate_request_body(models.AppendMemoryRequest, body)
         _raw = await self._core.request({
             "method": "POST",
             "path": "/v1/memories/{id}/append",
             "path_params": {"id": id},
             "query": None,
             "body": body,
+            "routing": {"owner": "collection", "body_fields": ["collection_id","collectionId"]},
             "idempotent": False,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
@@ -46,9 +52,36 @@ class MemoriesResource:
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
+    async def complete_upload(
+        self,
+        upload_session_id: str,
+        body: Union[models.CompleteMultipartUploadRequest, Mapping[str, Any]]
+    ) -> models.CompleteMultipartUploadResponse:
+        """Complete multipart upload session
+
+        Finalize an upload session after every multipart upload part has been uploaded.
+
+        operationId: memories.completeUpload
+        endpoint: POST /v1/memories/upload/{upload_session_id}/complete
+        """
+        body = _validate_request_body(models.CompleteMultipartUploadRequest, body)
+        _raw = await self._core.request({
+            "method": "POST",
+            "path": "/v1/memories/upload/{upload_session_id}/complete",
+            "path_params": {"upload_session_id": upload_session_id},
+            "query": None,
+            "body": body,
+            "idempotent": False,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.CompleteMultipartUploadResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
     async def create(
         self,
-        body: models.CreateMemoryRequest
+        body: Union[models.CreateMemoryRequest, Mapping[str, Any]]
     ) -> Union[models.MemoryCreateAcceptedResponse, models.SnapshotMutationResult]:
         """Create a new memory (conversation or document)
 
@@ -65,12 +98,14 @@ class MemoriesResource:
         operationId: memories.create
         endpoint: POST /v1/memories
         """
+        body = _validate_request_body(models.CreateMemoryRequest, body)
         _raw = await self._core.request({
             "method": "POST",
             "path": "/v1/memories",
             "path_params": {},
             "query": None,
             "body": body,
+            "routing": {"owner": "collection", "body_fields": ["collection_id","collectionId"]},
             "idempotent": False,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
@@ -83,28 +118,15 @@ class MemoriesResource:
         self,
         filename: str,
         content_type: str,
-        file_size: int
-    ) -> models.PresignedUploadResponse:
-        """Get presigned URL for large file upload
+        file_size: int,
+        *,
+        collection_id: Optional[Union[str, None]] = None,
+        workspace_id: Optional[Union[str, None]] = None,
+        client_idempotency_key: Optional[Union[str, None]] = None
+    ) -> models.MultipartUploadSessionResponse:
+        """Create multipart upload session
 
-        Get a presigned URL for uploading large files directly to S3.
-
-        Use this for files larger than 5MB that cannot be sent inline as base64.
-        After uploading, reference the file in memory creation using S3FileReference.
-
-        Args:
-            filename: Original filename (e.g., "image.jpg")
-            content_type: MIME type (e.g., "image/jpeg", "application/pdf")
-            file_size: Expected file size in bytes (max 100MB)
-
-        Returns:
-            dict with:
-            - upload_url: Presigned URL for PUT request (expires in 1 hour)
-            - upload_headers: Headers that must be sent with the presigned PUT request
-            - s3_key: The S3 key to reference in memory creation
-            - bucket: S3 bucket name
-            - expires_in: Seconds until URL expires
-            - max_size: Maximum allowed file size
+        Create a workspace-scoped multipart upload session.
 
         operationId: memories.createUpload
         endpoint: POST /v1/memories/upload
@@ -113,18 +135,20 @@ class MemoriesResource:
             "method": "POST",
             "path": "/v1/memories/upload",
             "path_params": {},
-            "query": {"filename": filename, "content_type": content_type, "file_size": file_size},
+            "query": {"filename": filename, "content_type": content_type, "file_size": file_size, "collection_id": collection_id, "workspace_id": workspace_id, "client_idempotency_key": client_idempotency_key},
+            "routing": {"owner": "collection", "query_fields": ["collection_id","collectionId"]},
             "idempotent": False,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
-            return models.PresignedUploadResponse.model_validate(_raw)
+            return models.MultipartUploadSessionResponse.model_validate(_raw)
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
     async def delete(
         self,
-        id: str
+        id: str,
+        collection_id: str
     ) -> models.GenericBooleanResponse:
         """Delete an engram
 
@@ -142,7 +166,8 @@ class MemoriesResource:
             "method": "DELETE",
             "path": "/v1/memories/{id}",
             "path_params": {"id": id},
-            "query": None,
+            "query": {"collection_id": collection_id},
+            "routing": {"owner": "collection", "query_fields": ["collection_id","collectionId"]},
             "idempotent": False,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
@@ -153,7 +178,7 @@ class MemoriesResource:
 
     async def delete_many(
         self,
-        body: models.DeleteMemoriesRequest
+        body: Union[models.DeleteMemoriesRequest, Mapping[str, Any]]
     ) -> Any:
         """Delete one or more engrams
 
@@ -172,24 +197,25 @@ class MemoriesResource:
         operationId: memories.deleteMany
         endpoint: POST /v1/memories/delete
         """
+        body = _validate_request_body(models.DeleteMemoriesRequest, body)
         _raw = await self._core.request({
             "method": "POST",
             "path": "/v1/memories/delete",
             "path_params": {},
             "query": None,
             "body": body,
+            "routing": {"owner": "collection", "body_fields": ["collection_id","collectionId"]},
             "idempotent": False,
         })
         return _raw
 
     async def delete_upload(
         self,
-        s3_key: str
+        upload_session_id: str
     ) -> models.GenericMessageResponse:
-        """Delete a previously uploaded S3 file
+        """Delete a pending upload session
 
-        Delete a file from S3 that was uploaded via a presigned URL.
-        Verifies the caller owns the file via S3 object metadata.
+        Delete a pending upload session and its staged object.
 
         operationId: memories.deleteUpload
         endpoint: DELETE /v1/memories/upload
@@ -198,7 +224,7 @@ class MemoriesResource:
             "method": "DELETE",
             "path": "/v1/memories/upload",
             "path_params": {},
-            "query": {"s3_key": s3_key},
+            "query": {"upload_session_id": upload_session_id},
             "idempotent": True,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
@@ -248,7 +274,7 @@ class MemoriesResource:
 
     async def recall_workflow(
         self,
-        body: Union[models.CursorRecallRequest, models.PredictRecallRequest, models.ResumeRecallRequest, models.EvidenceRecallRequest, models.BootstrapRecallRequest]
+        body: Union[models.CursorRecallRequest, models.PredictRecallRequest, models.ResumeRecallRequest, models.EvidenceRecallRequest, models.BootstrapRecallRequest, Mapping[str, Any]]
     ) -> dict[str, Any]:
         """Recall workflow patterns by intent
 
@@ -266,6 +292,7 @@ class MemoriesResource:
         operationId: memories.recallWorkflow
         endpoint: POST /v1/memories/workflow/recall
         """
+        body = _validate_request_body(Union[models.CursorRecallRequest, models.PredictRecallRequest, models.ResumeRecallRequest, models.EvidenceRecallRequest, models.BootstrapRecallRequest], body)
         _raw = await self._core.request({
             "method": "POST",
             "path": "/v1/memories/workflow/recall",
@@ -276,6 +303,30 @@ class MemoriesResource:
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         return _raw
+
+    async def resolve_search_sources(
+        self,
+        retrieval_id: str
+    ) -> models.RetrievalAuditSourcesResponse:
+        """Resolve sources for an audited memory search
+
+        Hydrate stored evidence refs after rechecking current access.
+
+        operationId: memories.resolveSearchSources
+        endpoint: GET /v1/memories/searches/{retrieval_id}/sources
+        """
+        _raw = await self._core.request({
+            "method": "GET",
+            "path": "/v1/memories/searches/{retrieval_id}/sources",
+            "path_params": {"retrieval_id": retrieval_id},
+            "query": None,
+            "idempotent": True,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.RetrievalAuditSourcesResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
 
     async def retrieve(
         self,
@@ -310,14 +361,15 @@ class MemoriesResource:
 
     async def search(
         self,
-        body: models.MemorySearchRequest
+        body: Union[models.MemorySearchRequest, Mapping[str, Any]]
     ) -> Union[models.CompactMemoryRecallResponse, models.MemoryRecall, models.SnapshotSearchResult]:
         """Search memories
 
         Perform a search query across your memories.
 
         **Standard mode** (collection_ids or readable-scope search): returns hierarchical MemoryRecall
-        with semantics, episodes, procedures, and sources.
+        with semantics, episodes, and procedures. Set ``include_sources``
+        to include the raw source material grounding the retrieved memory.
 
         **Snapshot mode** (snapshot field): returns graph-search results with
         {entities, relationships} from stateless in-memory traversal.
@@ -325,12 +377,14 @@ class MemoriesResource:
         operationId: memories.search
         endpoint: POST /v1/memories/search
         """
+        body = _validate_request_body(models.MemorySearchRequest, body)
         _raw = await self._core.request({
             "method": "POST",
             "path": "/v1/memories/search",
             "path_params": {},
             "query": None,
             "body": body,
+            "routing": {"owner": "collection", "body_fields": ["collection_ids","collectionIds","filters.collection_id","filters.collection_ids","search_settings.filters.collection_id","search_settings.filters.collection_ids"]},
             "idempotent": False,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
@@ -339,12 +393,37 @@ class MemoriesResource:
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
+    async def sign_upload_part(
+        self,
+        upload_session_id: str,
+        part_number: int,
+        checksum_sha256: str
+    ) -> models.MultipartUploadPartResponse:
+        """Create multipart upload part URL
+
+        Create a presigned URL for uploading one part of an existing memory upload session.
+
+        operationId: memories.signUploadPart
+        endpoint: POST /v1/memories/upload/{upload_session_id}/parts/{part_number}
+        """
+        _raw = await self._core.request({
+            "method": "POST",
+            "path": "/v1/memories/upload/{upload_session_id}/parts/{part_number}",
+            "path_params": {"upload_session_id": upload_session_id, "part_number": part_number},
+            "query": {"checksum_sha256": checksum_sha256},
+            "idempotent": False,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.MultipartUploadPartResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
     async def update(
         self,
         id: str,
-        body: models.UpdateMemoryRequest,
-        *,
-        collection_id: Optional[Union[str, None]] = None
+        collection_id: str,
+        body: Union[models.UpdateMemoryRequest, Mapping[str, Any]]
     ) -> models.Engram:
         """Update a memory
 
@@ -365,12 +444,14 @@ class MemoriesResource:
         operationId: memories.update
         endpoint: PATCH /v1/memories/{id}
         """
+        body = _validate_request_body(models.UpdateMemoryRequest, body)
         _raw = await self._core.request({
             "method": "PATCH",
             "path": "/v1/memories/{id}",
             "path_params": {"id": id},
             "query": {"collection_id": collection_id},
             "body": body,
+            "routing": {"owner": "collection", "query_fields": ["collection_id","collectionId"]},
             "idempotent": False,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
