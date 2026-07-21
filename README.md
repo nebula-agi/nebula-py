@@ -25,6 +25,7 @@ pip install --pre nebula-sdk
 
 ```python
 import asyncio
+import uuid
 from nebula import Nebula, ClientOptions
 
 async def main() -> None:
@@ -33,7 +34,10 @@ async def main() -> None:
             collection_id="01234567-...",
             raw_text="hello, world",
         )
-        results = await client.memories.search(body={"query": "hello"})
+        results = await client.memories.search(body={
+            "query": "hello",
+            "retrieval_operation_id": str(uuid.uuid4()),
+        })
         print(results)
 
 asyncio.run(main())
