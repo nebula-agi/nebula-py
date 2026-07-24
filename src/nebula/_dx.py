@@ -121,12 +121,21 @@ class Nebula(NebulaClient):
         provider: str,
         collection_id: str,
         config: Optional[Mapping[str, Any]] = None,
+        oauth_client_mode: Optional[str] = None,
+        oauth_client_id: Optional[str] = None,
+        oauth_client_secret: Optional[str] = None,
     ) -> Any:
         """Custom signature: positional provider + collection_id + optional
-        config dict, packed into the wire body shape."""
+        config/OAuth fields, packed into the wire body shape."""
         body: dict[str, Any] = {"collection_id": collection_id}
         if config is not None:
             body["config"] = dict(config)
+        if oauth_client_mode is not None:
+            body["oauth_client_mode"] = oauth_client_mode
+        if oauth_client_id is not None:
+            body["oauth_client_id"] = oauth_client_id
+        if oauth_client_secret is not None:
+            body["oauth_client_secret"] = oauth_client_secret
         return await self.connectors.connect(provider=provider, body=cast(Any, body))
 
     async def disconnect(
@@ -202,7 +211,6 @@ def _memory_append_params(body: Mapping[str, Any]) -> dict[str, Any]:
     for key in (
         "metadata",
         "ingestion_config",
-        "ingestion_mode",
         "raw_text",
         "chunks",
         "messages",
