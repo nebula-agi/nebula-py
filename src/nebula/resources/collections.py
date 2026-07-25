@@ -2,10 +2,14 @@
 # Source: nebula-sdks/openapi/openapi.json
 
 from __future__ import annotations
-from typing import Any, Optional, Union
+from typing import Any, Mapping, Optional, Union
 from pydantic import ValidationError
 from .. import _models as models
-from .._runtime import NebulaCore, validate_response as _validate_response
+from .._runtime import (
+    NebulaCore,
+    validate_request_body as _validate_request_body,
+    validate_response as _validate_response,
+)
 
 
 class CollectionsResource:
@@ -14,7 +18,7 @@ class CollectionsResource:
 
     async def create(
         self,
-        body: models.CreateCollectionRequest
+        body: Union[models.CreateCollectionRequest, Mapping[str, Any]]
     ) -> models.CollectionResponse:
         """Create a new collection
 
@@ -28,12 +32,14 @@ class CollectionsResource:
         operationId: collections.create
         endpoint: POST /v1/collections
         """
+        body = _validate_request_body(models.CreateCollectionRequest, body)
         _raw = await self._core.request({
             "method": "POST",
             "path": "/v1/collections",
             "path_params": {},
             "query": None,
             "body": body,
+            "routing": {"owner": "workspace", "body_fields": ["workspace_id","workspaceId"]},
             "idempotent": False,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
@@ -44,16 +50,19 @@ class CollectionsResource:
 
     async def delete(
         self,
-        id: str
-    ) -> models.GenericBooleanResponse:
+        id: str,
+        *,
+        idempotency_key: Optional[str] = None
+    ) -> models.DeletionOperationAcceptedResponse:
         """Delete collection
 
         Delete an existing collection.
 
         This endpoint allows deletion of a collection identified by its
         UUID. The user must have appropriate permissions to delete the
-        collection. Deleting a collection removes all associations but does
-        not delete the engrams within it.
+        collection. The collection is marked as deleting immediately and
+        graph/S3 cleanup continues asynchronously. Deleting a collection
+        removes all associations but does not delete the engrams within it.
 
         operationId: collections.delete
         endpoint: DELETE /v1/collections/{id}
@@ -63,11 +72,37 @@ class CollectionsResource:
             "path": "/v1/collections/{id}",
             "path_params": {"id": id},
             "query": None,
+            "headers": {"Idempotency-Key": idempotency_key} if idempotency_key is not None else None,
+            "routing": {"owner": "collection", "path_fields": ["id"]},
             "idempotent": True,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
-            return models.GenericBooleanResponse.model_validate(_raw)
+            return models.DeletionOperationAcceptedResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
+    async def get_deletion(
+        self,
+        operation_id: str
+    ) -> models.DeletionOperationResponse:
+        """Get collection deletion status
+
+        Return the current state and per-target outcomes for a collection deletion operation.
+
+        operationId: collections.getDeletion
+        endpoint: GET /v1/collections/deletions/{operation_id}
+        """
+        _raw = await self._core.request({
+            "method": "GET",
+            "path": "/v1/collections/deletions/{operation_id}",
+            "path_params": {"operation_id": operation_id},
+            "query": None,
+            "idempotent": True,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.DeletionOperationResponse.model_validate(_raw)
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
@@ -168,7 +203,7 @@ class CollectionsResource:
     async def update(
         self,
         id: str,
-        body: models.UpdateCollectionRequest
+        body: Union[models.UpdateCollectionRequest, Mapping[str, Any]]
     ) -> models.CollectionResponse:
         """Update collection
 
@@ -181,6 +216,7 @@ class CollectionsResource:
         operationId: collections.update
         endpoint: POST /v1/collections/{id}
         """
+        body = _validate_request_body(models.UpdateCollectionRequest, body)
         _raw = await self._core.request({
             "method": "POST",
             "path": "/v1/collections/{id}",
