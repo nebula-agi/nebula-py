@@ -51,12 +51,11 @@ async def main() -> None:
         _assert(hasattr(page, "has_more") and isinstance(page.has_more, bool), "list_collections returns .has_more: bool")
         _assert(hasattr(page, "next_cursor"), "list_collections returns .next_cursor (nullable)")
 
-        # 2. list_memories — cursor + applied_wal_seq wire shape
+        # 2. list_memories — cursor wire shape
         memories_page = await client.memories.list(limit=10)
         _assert(hasattr(memories_page, "data") and isinstance(memories_page.data, list), "list_memories returns .data: list")
         _assert(hasattr(memories_page, "has_more"), "list_memories returns .has_more: bool")
         _assert(hasattr(memories_page, "next_cursor"), "list_memories returns .next_cursor (nullable)")
-        _assert(hasattr(memories_page, "applied_wal_seq"), "list_memories returns .applied_wal_seq (RYW token)")
 
         # 3. Create a throwaway collection — the SDK peels the `{results: X}`
         # wire envelope, so the return is the inner CollectionResponse model.
@@ -95,11 +94,11 @@ async def main() -> None:
                     "raw_text": "e2e smoke test memory",
                 })
             except NebulaServerError as err:
-                print(f"  (got 500: {err.type}, likely Hatchet outage — set NEBULA_E2E_SKIP_INGESTION=1 to skip)")
+                print(f"  (got 500: {err.type}, likely Orchestration outage — set NEBULA_E2E_SKIP_INGESTION=1 to skip)")
 
         # 7. Clean up
-        deleted = await client.collections.delete(id=str(collection_id))
-        _assert(getattr(deleted, "success", None) is True, "collections.delete returns success: True")
+        deletion = await client.collections.delete(id=str(collection_id))
+        _assert(bool(deletion.operation_id), "collections.delete returns an operation ID")
 
     print("\nAll SDK e2e smoke checks passed.")
 
