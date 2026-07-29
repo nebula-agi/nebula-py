@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel
@@ -19,7 +19,7 @@ class ActivatedEntity(BaseModel):
     Contains the full EntityProfile (gestalt) filtered by relevance.
     """
 
-    activation_score: float | None = Field(0.0, title='Activation Score')
+    activation_score: float = Field(0.0, title='Activation Score')
     category: str | None = Field(None, title='Category')
     id: UUID = Field(..., title='Id')
     name: str = Field(..., title='Name')
@@ -34,16 +34,16 @@ class ActivatedEpisode(BaseModel):
     during graph traversal.
     """
 
-    activation_score: float | None = Field(0.0, title='Activation Score')
-    category: str | None = Field('episodic', title='Category')
+    activation_score: float = Field(0.0, title='Activation Score')
+    category: str = Field('episodic', title='Category')
     description: str | None = Field(None, title='Description')
     entity_names: list[str] | None = Field(None, title='Entity Names')
     evidence_ids: list[UUID] | None = Field(None, title='Evidence Ids')
     id: UUID = Field(..., title='Id')
-    is_obligation: bool | None = Field(False, title='Is Obligation')
+    is_obligation: bool = Field(False, title='Is Obligation')
     member_semantic_ids: list[UUID] | None = Field(None, title='Member Semantic Ids')
     modality: str | None = Field(None, title='Modality')
-    n_facts: int | None = Field(0, title='N Facts')
+    n_facts: int = Field(0, title='N Facts')
     name: str = Field(..., title='Name')
     resolved_at: datetime | None = Field(None, title='Resolved At')
     status: str | None = Field(None, title='Status')
@@ -59,14 +59,14 @@ class ActivatedProcedure(BaseModel):
     which are descriptive assertions.
     """
 
-    activation_score: float | None = Field(0.0, title='Activation Score')
-    belief_kind: str | None = Field(None, title='Belief Kind')
-    confidence: float | None = Field(0.0, title='Confidence')
-    derivation_type: str | None = Field('trivial', title='Derivation Type')
+    activation_score: float = Field(0.0, title='Activation Score')
+    confidence: float = Field(0.0, title='Confidence')
+    derivation_type: str = Field('trivial', title='Derivation Type')
     entity_id: UUID | None = Field(None, title='Entity Id')
     entity_name: str | None = Field(None, title='Entity Name')
     id: UUID = Field(..., title='Id')
-    is_negated: bool | None = Field(False, title='Is Negated')
+    is_negated: bool = Field(False, title='Is Negated')
+    memory_class: str | None = Field(None, title='Memory Class')
     metadata: dict[str, Any] | None = Field(None, title='Metadata')
     stability_confidence: float | None = Field(None, title='Stability Confidence')
     statement: str = Field(..., title='Statement')
@@ -93,7 +93,7 @@ class ActivatedWorkflowStep(BaseModel):
     how_this_works: str | None = Field(None, title='How This Works')
     index: int = Field(..., title='Index')
     object_type: str = Field(..., title='Object Type')
-    optional: bool | None = Field(False, title='Optional')
+    optional: bool = Field(False, title='Optional')
     typical_entities: list[str] | None = Field(None, title='Typical Entities')
     typical_tools: list[str] | None = Field(None, title='Typical Tools')
     variable_slots: list[str] | None = Field(None, title='Variable Slots')
@@ -154,12 +154,6 @@ class AppendedMessageResponse(BaseModel):
     message_id: str = Field(..., title='Message Id')
 
 
-class BatchDeleteResult(BaseModel):
-    failed: list[dict[str, Any]] = Field(..., title='Failed')
-    successful: list[str] = Field(..., title='Successful')
-    summary: dict[str, Any] = Field(..., title='Summary')
-
-
 class BootstrapRecallRequest(BaseModel):
     """
     Top-K patterns by confidence with no anchor.
@@ -177,7 +171,7 @@ class BootstrapRecallRequest(BaseModel):
         title='Collection Id',
     )
     intent: Literal['bootstrap'] = Field('bootstrap', title='Intent')
-    top_k: int | None = Field(
+    top_k: int = Field(
         10, description='Maximum number of pattern hits to return.', title='Top K'
     )
 
@@ -196,12 +190,12 @@ class ChunkEnrichmentSettings(BaseModel):
         description='The prompt to use for chunk enrichment',
         title='Chunk Enrichment Prompt',
     )
-    enable_chunk_enrichment: bool | None = Field(
+    enable_chunk_enrichment: bool = Field(
         False,
         description='Whether to enable chunk enrichment or not',
         title='Enable Chunk Enrichment',
     )
-    n_chunks: int | None = Field(
+    n_chunks: int = Field(
         2,
         description='The number of preceding and succeeding chunks to include. Defaults to 2.',
         title='N Chunks',
@@ -222,6 +216,7 @@ class CollectionResponse(BaseModel):
     has_preview_access: bool | None = Field(None, title='Has Preview Access')
     id: UUID = Field(..., title='Id')
     is_forked: bool | None = Field(None, title='Is Forked')
+    lattice_node_id: UUID | None = Field(None, title='Lattice Node Id')
     marketplace_metadata: dict[str, Any] | None = Field(
         None, title='Marketplace Metadata'
     )
@@ -237,7 +232,7 @@ class CollectionResponse(BaseModel):
     storage_target_id: UUID | None = Field(None, title='Storage Target Id')
     updated_at: datetime = Field(..., title='Updated At')
     user_count: int = Field(..., title='User Count')
-    workflows_enabled: bool | None = Field(False, title='Workflows Enabled')
+    workflows_enabled: bool = Field(False, title='Workflows Enabled')
     workspace_id: UUID | None = Field(None, title='Workspace Id')
 
 
@@ -249,14 +244,43 @@ class CompactMemoryRecallResponse(BaseModel):
     episodic: list[dict[str, Any]] | None = Field(None, title='Episodic')
     procedural: list[dict[str, Any]] | None = Field(None, title='Procedural')
     query: str = Field(..., title='Query')
+    retrieval_id: UUID | None = Field(
+        None,
+        description='Stable identifier for retrieval audit and source resolution.',
+        title='Retrieval Id',
+    )
     semantic: list[dict[str, Any]] | None = Field(None, title='Semantic')
-    sources: list[dict[str, Any]] | None = Field(None, title='Sources')
-    token_count: int | None = Field(0, title='Token Count')
+    sources: list[dict[str, Any]] | None = Field(
+        None,
+        description='Present only when include_sources is true; an empty list means sources were requested but none were found.',
+        title='Sources',
+    )
+    token_count: int = Field(0, title='Token Count')
+
+
+class CompleteMultipartUploadResponse(BaseModel):
+    byte_size: int = Field(..., title='Byte Size')
+    content_type: str = Field(..., title='Content Type')
+    raw_sha256: str = Field(..., title='Raw Sha256')
+    upload_session_id: UUID = Field(..., title='Upload Session Id')
+
+
+class CompletedMultipartUploadPart(BaseModel):
+    checksum_sha256: str = Field(
+        ...,
+        description='Base64-encoded SHA-256 checksum returned for the part.',
+        title='Checksum Sha256',
+    )
+    etag: str = Field(..., min_length=1, title='Etag')
+    part_number: int = Field(..., ge=1, le=10000, title='Part Number')
 
 
 class ConnectRequest(BaseModel):
     collection_id: UUID = Field(..., title='Collection Id')
     config: dict[str, Any] | None = Field(None, title='Config')
+    oauth_client_id: str | None = Field(None, title='Oauth Client Id')
+    oauth_client_mode: str | None = Field(None, title='Oauth Client Mode')
+    oauth_client_secret: str | None = Field(None, title='Oauth Client Secret')
 
 
 class ConnectorConnectResponse(BaseModel):
@@ -278,6 +302,50 @@ class Status(Enum):
 class ConnectorErrorDetail(BaseModel):
     message: str = Field(..., title='Message')
     retryable: bool = Field(..., title='Retryable')
+
+
+class ProviderFamily(Enum):
+    google = 'google'
+    m365 = 'm365'
+
+
+class ConnectorOAuthAppResponse(BaseModel):
+    can_manage: bool = Field(False, title='Can Manage')
+    configured: bool = Field(..., title='Configured')
+    gmail_pubsub_audience: str | None = Field(None, title='Gmail Pubsub Audience')
+    gmail_pubsub_push_service_account: str | None = Field(
+        None, title='Gmail Pubsub Push Service Account'
+    )
+    gmail_pubsub_topic: str | None = Field(None, title='Gmail Pubsub Topic')
+    gmail_webhook_url: str | None = Field(None, title='Gmail Webhook Url')
+    oauth_client_id: str | None = Field(None, title='Oauth Client Id')
+    provider_family: ProviderFamily = Field(..., title='Provider Family')
+    updated_at: datetime | None = Field(None, title='Updated At')
+
+
+class GmailPubsubAudience(RootModel[str]):
+    root: str = Field(..., max_length=512, title='Gmail Pubsub Audience')
+
+
+class GmailPubsubPushServiceAccount(RootModel[str]):
+    root: str = Field(..., max_length=320, title='Gmail Pubsub Push Service Account')
+
+
+class GmailPubsubTopic(RootModel[str]):
+    root: str = Field(..., max_length=512, title='Gmail Pubsub Topic')
+
+
+class ConnectorOAuthAppUpdateRequest(BaseModel):
+    collection_id: UUID = Field(..., title='Collection Id')
+    gmail_pubsub_audience: GmailPubsubAudience | None = Field(
+        None, title='Gmail Pubsub Audience'
+    )
+    gmail_pubsub_push_service_account: GmailPubsubPushServiceAccount | None = Field(
+        None, title='Gmail Pubsub Push Service Account'
+    )
+    gmail_pubsub_topic: GmailPubsubTopic | None = Field(
+        None, title='Gmail Pubsub Topic'
+    )
 
 
 class ConnectorSyncResponse(BaseModel):
@@ -305,13 +373,18 @@ class ConversationFields(BaseModel):
 
 class CreateCollectionRequest(BaseModel):
     description: str | None = Field(None, title='Description')
+    lattice_node_id: UUID | None = Field(
+        None,
+        description="Team workspace lattice node that owns this collection. Omit to use the workspace's General node. Personal collections cannot set this field.",
+        title='Lattice Node Id',
+    )
     name: str = Field(..., min_length=1, pattern='[\\s\\S]*\\S[\\s\\S]*', title='Name')
     storage_target_id: UUID | None = Field(
         None,
         description="BYOC storage target to host this collection's graph data. Requires a team workspace and an active target provisioned through the dashboard or workspace storage-target APIs.",
         title='Storage Target Id',
     )
-    workflows_enabled: bool | None = Field(False, title='Workflows Enabled')
+    workflows_enabled: bool = Field(False, title='Workflows Enabled')
     workspace_id: UUID | None = Field(
         None,
         description='Workspace this collection belongs to. Provisioned via the dashboard / management API, not minted through the public SDK.',
@@ -329,6 +402,16 @@ class Chunks1(RootModel[list[Chunks1Item]]):
         description='Pre-chunked text for document kind',
         min_length=1,
         title='Chunks',
+    )
+
+
+class ClientIdempotencyKey(RootModel[str]):
+    root: str = Field(
+        ...,
+        description='Optional client-supplied key for retrying the same create request without creating duplicate ingestion work.',
+        max_length=256,
+        min_length=1,
+        title='Client Idempotency Key',
     )
 
 
@@ -378,7 +461,7 @@ class CursorRecallRequest(BaseModel):
         description="Anchor: the user's current state nodegroup id.",
         title='State Id',
     )
-    top_k: int | None = Field(
+    top_k: int = Field(
         10, description='Maximum number of pattern hits to return.', title='Top K'
     )
     trace_id: UUID | None = Field(
@@ -388,8 +471,77 @@ class CursorRecallRequest(BaseModel):
     )
 
 
-class DeleteMemoriesRequest(RootModel[UUID | list[UUID]]):
-    root: UUID | list[UUID] = Field(..., title='DeleteMemoriesRequest')
+class DeleteMemoriesRequest(BaseModel):
+    collection_id: UUID = Field(
+        ...,
+        description='Collection context for the memory deletion.',
+        title='Collection Id',
+    )
+    ids: UUID | list[UUID] = Field(
+        ...,
+        description='Single engram ID or list of engram IDs to delete.',
+        title='Ids',
+    )
+
+
+class DeletionOperationAcceptedResponse(BaseModel):
+    operation_id: UUID = Field(..., title='Operation Id')
+    status: Literal['accepted'] = Field('accepted', title='Status')
+    status_url: str = Field(..., title='Status Url')
+
+
+class OperationKind(Enum):
+    engram = 'engram'
+    collection = 'collection'
+
+
+class State(Enum):
+    accepted = 'accepted'
+    tombstoning = 'tombstoning'
+    barriering = 'barriering'
+    logically_deleted = 'logically_deleted'
+    cancelling = 'cancelling'
+    cleaning = 'cleaning'
+    succeeded = 'succeeded'
+    failed = 'failed'
+
+
+class State1(Enum):
+    captured = 'captured'
+    barriering = 'barriering'
+    committed = 'committed'
+    failed = 'failed'
+
+
+class DeletionTargetCollectionResponse(BaseModel):
+    barrier_operation_id: str | None = Field(None, title='Barrier Operation Id')
+    collection_id: UUID = Field(..., title='Collection Id')
+    committed_frontier: dict[str, Any] | None = Field(None, title='Committed Frontier')
+    error: str | None = Field(None, title='Error')
+    generation: int = Field(..., ge=1, title='Generation')
+    state: State1 = Field(..., title='State')
+
+
+class Generation(RootModel[int]):
+    root: int = Field(..., ge=1, title='Generation')
+
+
+class TargetKind(Enum):
+    engram = 'engram'
+    collection = 'collection'
+    chunk = 'chunk'
+
+
+class DeletionTargetResponse(BaseModel):
+    collections: list[DeletionTargetCollectionResponse] | None = Field(
+        None, title='Collections'
+    )
+    error: str | None = Field(None, title='Error')
+    generation: Generation | None = Field(None, title='Generation')
+    state: State = Field(..., title='State')
+    target_id: UUID | None = Field(None, title='Target Id')
+    target_key: str = Field(..., title='Target Key')
+    target_kind: TargetKind = Field(..., title='Target Kind')
 
 
 class DocumentType(Enum):
@@ -439,10 +591,10 @@ class EmbeddingBlock(BaseModel):
     A positionally-aligned masked embedding matrix.
     """
 
-    dim: int | None = Field(0, title='Dim')
-    encoding: Literal['npy-base64'] = Field('npy-base64', title='Encoding')
-    mask_b64: str | None = Field('', title='Mask B64')
-    values_b64: str | None = Field('', title='Values B64')
+    dim: int = Field(0, title='Dim')
+    encoding: Literal['raw-f32-base64'] = Field('raw-f32-base64', title='Encoding')
+    mask_b64: str = Field('', title='Mask B64')
+    values_b64: str = Field('', title='Values B64')
 
 
 class EngramKind(Enum):
@@ -467,7 +619,7 @@ class EntityRecord(BaseModel):
 
     category: str | None = Field(None, title='Category')
     chunk_ids: list[str] | None = Field(None, title='Chunk Ids')
-    collection_id: str | None = Field('', title='Collection Id')
+    collection_id: str = Field('', title='Collection Id')
     created_at: datetime = Field(..., title='Created At')
     description: str | None = Field(None, title='Description')
     engram_id: str = Field(..., title='Engram Id')
@@ -475,7 +627,7 @@ class EntityRecord(BaseModel):
     id: str = Field(..., title='Id')
     metadata: dict[str, Any] | None = Field(None, title='Metadata')
     name: str = Field(..., title='Name')
-    relationship_count: int | None = Field(0, title='Relationship Count')
+    relationship_count: int = Field(0, title='Relationship Count')
     updated_at: datetime = Field(..., title='Updated At')
 
 
@@ -518,7 +670,7 @@ class EvidenceRecallRequest(BaseModel):
     pattern_id: UUID = Field(
         ..., description='The pattern entity to hydrate.', title='Pattern Id'
     )
-    top_k: int | None = Field(
+    top_k: int = Field(
         10, description='Maximum number of pattern hits to return.', title='Top K'
     )
 
@@ -551,7 +703,7 @@ class FileContentRequest(BaseModel):
     filename: str | None = Field(
         None, description='Original filename', title='Filename'
     )
-    media_type: str | None = Field(
+    media_type: str = Field(
         'application/octet-stream', description='MIME type', title='Media Type'
     )
     type: Literal['audio', 'document', 'file', 'image'] = Field(
@@ -559,14 +711,38 @@ class FileContentRequest(BaseModel):
     )
 
 
-class GenericBooleanResponse(BaseModel):
-    success: bool = Field(..., title='Success')
+class FileReferenceRequest(BaseModel):
+    """
+    Reference to a file uploaded through an upload session.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    type: Literal['file_ref'] = Field('file_ref', title='Type')
+    upload_session_id: UUID = Field(
+        ...,
+        description='Upload session returned by memories.createUpload.',
+        title='Upload Session Id',
+    )
 
 
 class GenericMessageResponse(BaseModel):
     id: str | None = Field(None, title='Id')
     memory_id: str | None = Field(None, title='Memory Id')
     message: str = Field(..., title='Message')
+
+
+class GraphExtractionProgressPhase(Enum):
+    """
+    Current work phase for per-engram graph extraction progress.
+    """
+
+    queued = 'queued'
+    extracting = 'extracting'
+    writing = 'writing'
+    completed = 'completed'
+    failed = 'failed'
 
 
 class GraphExtractionStatus(Enum):
@@ -576,6 +752,7 @@ class GraphExtractionStatus(Enum):
 
     pending = 'pending'
     processing = 'processing'
+    empty = 'empty'
     success = 'success'
     failed = 'failed'
 
@@ -590,7 +767,7 @@ class InferenceHint(BaseModel):
 
     confidence: float | None = Field(None, title='Confidence')
     inference_metadata: dict[str, Any] | None = Field(None, title='Inference Metadata')
-    inferred: bool | None = Field(False, title='Inferred')
+    inferred: bool = Field(False, title='Inferred')
     ledger_p_stable: float | None = Field(None, title='Ledger P Stable')
     ledger_p_true: float | None = Field(None, title='Ledger P True')
     ledger_p_use: float | None = Field(None, title='Ledger P Use')
@@ -601,8 +778,8 @@ class InferenceHint(BaseModel):
     relationship_id: UUID | None = Field(None, title='Relationship Id')
     subject_id: UUID | None = Field(None, title='Subject Id')
     term: str = Field(..., title='Term')
-    usable_for_rewrite: bool | None = Field(False, title='Usable For Rewrite')
-    used_for_rewrite: bool | None = Field(False, title='Used For Rewrite')
+    usable_for_rewrite: bool = Field(False, title='Usable For Rewrite')
+    used_for_rewrite: bool = Field(False, title='Used For Rewrite')
 
 
 class IngestionConfig(BaseModel):
@@ -617,29 +794,45 @@ class IngestionConfig(BaseModel):
     audio_transcription_model: str | None = Field(
         None, title='Audio Transcription Model'
     )
-    automatic_extraction: bool | None = Field(False, title='Automatic Extraction')
+    automatic_extraction: bool = Field(False, title='Automatic Extraction')
     chunk_enrichment_settings: ChunkEnrichmentSettings | None = None
-    chunk_overlap: int | None = Field(512, title='Chunk Overlap')
-    chunk_size: int | None = Field(1024, title='Chunk Size')
-    chunking_strategy: str | None = Field('recursive', title='Chunking Strategy')
+    chunk_overlap: int = Field(512, title='Chunk Overlap')
+    chunk_size: int = Field(1024, title='Chunk Size')
+    chunking_strategy: str = Field('recursive', title='Chunking Strategy')
     excluded_parsers: list[str] | None = Field(None, title='Excluded Parsers')
     extra_parsers: dict[str, Any] | None = Field(None, title='Extra Parsers')
-    max_concurrent_vlm_tasks: int | None = Field(5, title='Max Concurrent Vlm Tasks')
+    max_concurrent_vlm_tasks: int = Field(5, title='Max Concurrent Vlm Tasks')
     parser_overrides: dict[str, str] | None = Field(None, title='Parser Overrides')
-    provider: str | None = Field('nebula', title='Provider')
+    provider: str = Field('nebula', title='Provider')
     vlm: str | None = Field(None, title='Vlm')
-    vlm_batch_size: int | None = Field(5, title='Vlm Batch Size')
-    vlm_max_tokens_to_sample: int | None = Field(1024, title='Vlm Max Tokens To Sample')
-    vlm_ocr_one_page_per_chunk: bool | None = Field(
-        True, title='Vlm Ocr One Page Per Chunk'
-    )
+    vlm_batch_size: int = Field(5, title='Vlm Batch Size')
+    vlm_max_tokens_to_sample: int = Field(1024, title='Vlm Max Tokens To Sample')
+    vlm_ocr_one_page_per_chunk: bool = Field(True, title='Vlm Ocr One Page Per Chunk')
 
 
-class IngestionMode(Enum):
-    hi_res = 'hi-res'
-    ocr = 'ocr'
-    fast = 'fast'
-    custom = 'custom'
+class IngestionFailureCode(Enum):
+    """
+    Stable, machine-readable reasons why ingestion stopped.
+    """
+
+    ingestion_failed = 'ingestion_failed'
+    orchestration_unavailable = 'orchestration_unavailable'
+    orchestration_start_timeout = 'orchestration_start_timeout'
+
+
+class IngestionFailureStage(Enum):
+    """
+    The ingestion boundary at which processing stopped.
+    """
+
+    orchestration = 'orchestration'
+    queued = 'queued'
+    parsing = 'parsing'
+    extracting = 'extracting'
+    chunking = 'chunking'
+    embedding = 'embedding'
+    augmenting = 'augmenting'
+    storing = 'storing'
 
 
 class IngestionResponse(BaseModel):
@@ -683,11 +876,6 @@ class MemoryCreateAcceptedResponse(BaseModel):
     Accepted-response envelope for async memory ingestion.
     """
 
-    applied_wal_seq: int | None = Field(
-        0,
-        description="WAL committed sequence number from this placeholder write, for read-your-writes assertions on the next collection-scoped list call. A non-zero value indicates the request appended a WAL entry; pass it back as `min_applied_wal_seq` on GET /v1/memories to wait for the entry's visibility before serving. Zero on idempotent observe-existing replays and on multi-shard collections (per-shard scalars are not comparable across shards) — clients should treat zero as 'no assertion to make.' Single-shard collections only.",
-        title='Applied Wal Seq',
-    )
     engram_id: UUID | None = Field(None, title='Engram Id')
     id: UUID = Field(..., title='Id')
     memory_id: UUID | None = Field(None, title='Memory Id')
@@ -711,6 +899,26 @@ class MessageType(Enum):
     assistant = 'assistant'
     function = 'function'
     tool = 'tool'
+
+
+class MultipartUploadPartResponse(BaseModel):
+    expires_in: int = Field(..., title='Expires In')
+    part_number: int = Field(..., title='Part Number')
+    upload_headers: dict[str, str] = Field(..., title='Upload Headers')
+    upload_url: str = Field(..., title='Upload Url')
+
+
+class MultipartUploadSessionResponse(BaseModel):
+    expires_in: int = Field(..., title='Expires In')
+    max_size: int = Field(..., title='Max Size')
+    part_size: int = Field(
+        ..., description='Recommended upload part size in bytes.', title='Part Size'
+    )
+    upload_session_id: UUID = Field(
+        ...,
+        description='Upload session ID to reference in memory creation.',
+        title='Upload Session Id',
+    )
 
 
 class PaginatedCollectionResponse(BaseModel):
@@ -755,7 +963,7 @@ class PredictRecallRequest(BaseModel):
         description="Anchor: the user's current state nodegroup id.",
         title='State Id',
     )
-    top_k: int | None = Field(
+    top_k: int = Field(
         10, description='Maximum number of pattern hits to return.', title='Top K'
     )
     trace_id: UUID | None = Field(
@@ -765,16 +973,6 @@ class PredictRecallRequest(BaseModel):
     )
 
 
-class PresignedUploadResponse(BaseModel):
-    bucket: str = Field(..., title='Bucket')
-    download_url: str = Field(..., title='Download Url')
-    expires_in: int = Field(..., title='Expires In')
-    max_size: int = Field(..., title='Max Size')
-    s3_key: str = Field(..., title='S3 Key')
-    upload_headers: dict[str, str] = Field(..., title='Upload Headers')
-    upload_url: str = Field(..., title='Upload Url')
-
-
 class RelationshipRecord(BaseModel):
     """
     Canonical relationship record used in snapshots, WAL ops, and segments.
@@ -782,7 +980,7 @@ class RelationshipRecord(BaseModel):
 
     category: str | None = Field(None, title='Category')
     chunk_ids: list[str] | None = Field(None, title='Chunk Ids')
-    collection_id: str | None = Field('', title='Collection Id')
+    collection_id: str = Field('', title='Collection Id')
     created_at: datetime = Field(..., title='Created At')
     description: str | None = Field(None, title='Description')
     engram_id: str | None = Field(None, title='Engram Id')
@@ -791,7 +989,7 @@ class RelationshipRecord(BaseModel):
     metadata: dict[str, Any] | None = Field(None, title='Metadata')
     object: str | None = Field(None, title='Object')
     object_id: str = Field(..., title='Object Id')
-    predicate: str | None = Field('', title='Predicate')
+    predicate: str = Field('', title='Predicate')
     relationship_type: str | None = Field(None, title='Relationship Type')
     subject: str | None = Field(None, title='Subject')
     subject_id: str = Field(..., title='Subject Id')
@@ -820,7 +1018,7 @@ class ResumeRecallRequest(BaseModel):
         description="Anchor: the user's current state nodegroup id.",
         title='State Id',
     )
-    top_k: int | None = Field(
+    top_k: int = Field(
         10, description='Maximum number of pattern hits to return.', title='Top K'
     )
     trace_id: UUID | None = Field(
@@ -830,25 +1028,15 @@ class ResumeRecallRequest(BaseModel):
     )
 
 
-class S3FileReferenceRequest(BaseModel):
-    """
-    Reference to a file uploaded to S3 (for large files).
-    """
+class MemoryKind(Enum):
+    semantic = 'semantic'
+    episodic = 'episodic'
+    procedural = 'procedural'
 
-    bucket: str | None = Field(
-        None, description='S3 bucket (uses default if not specified)', title='Bucket'
-    )
-    filename: str | None = Field(
-        None, description='Original filename', title='Filename'
-    )
-    media_type: str | None = Field(
-        'application/octet-stream', description='MIME type', title='Media Type'
-    )
-    s3_key: str = Field(..., description='S3 object key', title='S3 Key')
-    size_bytes: int | None = Field(
-        None, description='File size in bytes', title='Size Bytes'
-    )
-    type: Literal['s3_ref'] = Field('s3_ref', title='Type')
+
+class Status2(Enum):
+    complete = 'complete'
+    partial = 'partial'
 
 
 class SearchEffort(Enum):
@@ -875,11 +1063,11 @@ class SearchSettings(BaseModel):
     Memory search uses `effort` (auto/low/medium/high) to control compute.
     """
 
-    effort: SearchEffort | None = Field(
+    effort: SearchEffort = Field(
         'auto',
         description='Compute effort budget (auto/low/medium/high). Controls traversal compute for memory search, not MemoryRecall size.',
     )
-    enable_conceptual_expansion: bool | None = Field(
+    enable_conceptual_expansion: bool = Field(
         False,
         description='Enable conceptual expansion for cross-domain discovery through overlapping concepts',
         title='Enable Conceptual Expansion',
@@ -889,7 +1077,7 @@ class SearchSettings(BaseModel):
         description='Internal: Filters populated by the API router',
         title='Filters',
     )
-    fulltext_weight: float | None = Field(
+    fulltext_weight: float = Field(
         0.2,
         description='Weight for fulltext search in hybrid mode (0-1). Set to 0 for pure semantic search.',
         ge=0.0,
@@ -901,24 +1089,24 @@ class SearchSettings(BaseModel):
         description='Internal: Graph traversal settings (bfs_max_depth, semantic_threshold, etc.)',
         title='Graph Settings',
     )
-    has_pruning_gate: bool | None = Field(
+    has_pruning_gate: bool = Field(
         False,
         description='Internal: Set by select_search_filters when an owner_id $in partition-pruning wrapper has been added around the filter tree. Used by the in-memory graph read engine to strip the Postgres-only wrapper before evaluating delegation.',
         title='Has Pruning Gate',
     )
-    include_scores: bool | None = Field(
+    include_scores: bool = Field(
         True,
         description='Whether to include search score values in the search results',
         title='Include Scores',
     )
-    semantic_weight: float | None = Field(
+    semantic_weight: float = Field(
         0.8,
         description='Weight for semantic search in hybrid mode (0-1). Set to 0 for pure fulltext search.',
         ge=0.0,
         le=1.0,
         title='Semantic Weight',
     )
-    verbose: bool | None = Field(
+    verbose: bool = Field(
         False,
         description='Include full internal metadata, UUIDs, and confidence fields in MemoryRecall responses. When False, returns compact LLM-optimized format.',
         title='Verbose',
@@ -986,6 +1174,47 @@ class SnapshotSearchResult(BaseModel):
     )
 
 
+class SourceProvenance(BaseModel):
+    name: str | None = Field(
+        None,
+        description='Human-readable source title, such as a filename or subject.',
+        title='Name',
+    )
+    provider: str | None = Field(
+        None,
+        description="Connector/provider identifier, such as 'gmail' or 'google_drive'.",
+        title='Provider',
+    )
+    provider_object_id: str | None = Field(
+        None,
+        description='Provider-native id for the source item.',
+        title='Provider Object Id',
+    )
+    provider_parent_id: str | None = Field(
+        None,
+        description='Provider-native id of the parent source item.',
+        title='Provider Parent Id',
+    )
+    provider_thread_id: str | None = Field(
+        None,
+        description='Provider-native id for the thread/conversation.',
+        title='Provider Thread Id',
+    )
+    type: str | None = Field(
+        None,
+        description="Human-scale source class, such as 'file', 'email', or 'chat'.",
+        title='Type',
+    )
+    uri: str | None = Field(
+        None, description='Stable non-URL source identifier.', title='Uri'
+    )
+    url: str | None = Field(
+        None,
+        description='Provider URL for the source object when available.',
+        title='Url',
+    )
+
+
 class StorageTargetCreateRequest(BaseModel):
     """
     Hosted SaaS storage target registration. Use AWS S3 and omit custom endpoint configuration.
@@ -994,7 +1223,7 @@ class StorageTargetCreateRequest(BaseModel):
     bucket: str = Field(..., max_length=255, min_length=1, title='Bucket')
     kms_key_id: str | None = Field(None, max_length=2048, title='Kms Key Id')
     name: str = Field(..., max_length=128, min_length=1, title='Name')
-    prefix: str | None = Field('', max_length=1024, title='Prefix')
+    prefix: str = Field('', max_length=1024, title='Prefix')
     region: str = Field(..., max_length=64, title='Region')
     role_arn: str = Field(
         ...,
@@ -1004,7 +1233,7 @@ class StorageTargetCreateRequest(BaseModel):
     )
 
 
-class Status2(Enum):
+class Status3(Enum):
     pending = 'pending'
     active = 'active'
     validation_failed = 'validation_failed'
@@ -1023,7 +1252,7 @@ class StorageTargetResponse(BaseModel):
     prefix: str = Field(..., title='Prefix')
     region: str | None = Field(None, title='Region')
     role_arn: str | None = Field(None, title='Role Arn')
-    status: Status2 = Field(..., title='Status')
+    status: Status3 = Field(..., title='Status')
     updated_at: datetime = Field(..., title='Updated At')
     validation_error: str | None = Field(None, title='Validation Error')
     workspace_id: UUID = Field(..., title='Workspace Id')
@@ -1051,7 +1280,7 @@ class Name(RootModel[str]):
 class UpdateCollectionRequest(BaseModel):
     access_tier: str | None = Field(None, title='Access Tier')
     description: str | None = Field(None, title='Description')
-    generate_description: bool | None = Field(False, title='Generate Description')
+    generate_description: bool = Field(False, title='Generate Description')
     name: Name | None = Field(None, title='Name')
     workflows_enabled: bool | None = Field(None, title='Workflows Enabled')
 
@@ -1060,7 +1289,7 @@ class UpdateMemoryRequest(BaseModel):
     collection_ids: list[UUID] | None = Field(
         None, description='New collection associations', title='Collection Ids'
     )
-    merge_metadata: bool | None = Field(
+    merge_metadata: bool = Field(
         False, description='Merge with existing metadata', title='Merge Metadata'
     )
     metadata: dict[str, Any] | None = Field(
@@ -1095,6 +1324,18 @@ class WorkflowRecallResponse(BaseModel):
     )
 
 
+class WorkspaceEncryptionStatus(Enum):
+    pending = 'pending'
+    provisioning = 'provisioning'
+    activating = 'activating'
+    activation_failed = 'activation_failed'
+    active = 'active'
+    disabling = 'disabling'
+    disable_failed = 'disable_failed'
+    validation_failed = 'validation_failed'
+    disabled = 'disabled'
+
+
 class WrappedCollectionResponse(BaseModel):
     results: CollectionResponse
 
@@ -1103,16 +1344,24 @@ class WrappedCompactMemoryRecallResponse(BaseModel):
     results: CompactMemoryRecallResponse
 
 
+class WrappedCompleteMultipartUploadResponse(BaseModel):
+    results: CompleteMultipartUploadResponse
+
+
 class WrappedConnectorConnectResponse(BaseModel):
     results: ConnectorConnectResponse
+
+
+class WrappedConnectorOAuthAppResponse(BaseModel):
+    results: ConnectorOAuthAppResponse
 
 
 class WrappedConnectorSyncResponse(BaseModel):
     results: ConnectorSyncResponse
 
 
-class WrappedGenericBooleanResponse(BaseModel):
-    results: GenericBooleanResponse
+class WrappedDeletionOperationAcceptedResponse(BaseModel):
+    results: DeletionOperationAcceptedResponse
 
 
 class WrappedGenericMessageResponse(BaseModel):
@@ -1121,6 +1370,10 @@ class WrappedGenericMessageResponse(BaseModel):
 
 class WrappedIngestionResponse(BaseModel):
     results: IngestionResponse
+
+
+class WrappedListOfConnectorOAuthAppResponse(BaseModel):
+    results: list[ConnectorOAuthAppResponse] = Field(..., title='Results')
 
 
 class WrappedListOfStorageTargetResponse(BaseModel):
@@ -1135,8 +1388,12 @@ class WrappedMemoryCreateAcceptedResponse(BaseModel):
     results: MemoryCreateAcceptedResponse
 
 
-class WrappedPresignedUploadResponse(BaseModel):
-    results: PresignedUploadResponse
+class WrappedMultipartUploadPartResponse(BaseModel):
+    results: MultipartUploadPartResponse
+
+
+class WrappedMultipartUploadSessionResponse(BaseModel):
+    results: MultipartUploadSessionResponse
 
 
 class WrappedSnapshotImportResult(BaseModel):
@@ -1163,28 +1420,28 @@ class ActivatedWorkflow(BaseModel):
     which answers "what are my preferences about X".
     """
 
-    activation_score: float | None = Field(0.0, title='Activation Score')
-    active_instance_count: int | None = Field(0, title='Active Instance Count')
+    activation_score: float = Field(0.0, title='Activation Score')
+    active_instance_count: int = Field(0, title='Active Instance Count')
     backbone_signature_hash: str | None = Field(None, title='Backbone Signature Hash')
     branches: list[dict[str, Any]] | None = Field(None, title='Branches')
-    confidence: float | None = Field(0.0, title='Confidence')
+    confidence: float = Field(0.0, title='Confidence')
     current_step_index: int | None = Field(None, title='Current Step Index')
     goal: str = Field(..., title='Goal')
     id: UUID = Field(..., title='Id')
-    instance_count: int | None = Field(0, title='Instance Count')
+    instance_count: int = Field(0, title='Instance Count')
     last_observed_at: str | None = Field(None, title='Last Observed At')
     metadata: dict[str, Any] | None = Field(None, title='Metadata')
     name: str = Field(..., title='Name')
     predicted_next_step: ActivatedWorkflowStep | None = None
     steps: list[ActivatedWorkflowStep] | None = Field(None, title='Steps')
-    taxonomy_version: int | None = Field(1, title='Taxonomy Version')
+    taxonomy_version: int = Field(1, title='Taxonomy Version')
     variable_slots: dict[str, Any] | None = Field(None, title='Variable Slots')
 
 
 class Content11(
-    RootModel[TextContentRequest | FileContentRequest | S3FileReferenceRequest]
+    RootModel[TextContentRequest | FileContentRequest | FileReferenceRequest]
 ):
-    root: TextContentRequest | FileContentRequest | S3FileReferenceRequest = Field(
+    root: TextContentRequest | FileContentRequest | FileReferenceRequest = Field(
         ..., discriminator='type'
     )
 
@@ -1249,9 +1506,6 @@ class AppendMemoryRequest(BaseModel):
     ingestion_config: IngestionConfig | None = Field(
         None, description='Optional ingestion configuration override.'
     )
-    ingestion_mode: IngestionMode | None = Field(
-        'custom', description='Ingestion mode for document content.'
-    )
     messages: Messages | None = Field(
         None,
         description='Messages to append for conversation memories. Each message has content, role, and optional metadata.',
@@ -1269,9 +1523,14 @@ class AppendMemoryRequest(BaseModel):
     )
 
 
-class BatchDeleteResponse(BaseModel):
-    message: str = Field(..., title='Message')
-    results: BatchDeleteResult
+class CompleteMultipartUploadRequest(BaseModel):
+    expected_sha256: str = Field(
+        ...,
+        description='Full-object SHA-256 hex digest.',
+        pattern='^[0-9a-f]{64}$',
+        title='Expected Sha256',
+    )
+    parts: list[CompletedMultipartUploadPart] = Field(..., min_length=1, title='Parts')
 
 
 class ConnectorConnectionResponse(BaseModel):
@@ -1282,6 +1541,7 @@ class ConnectorConnectionResponse(BaseModel):
     external_account_id: str | None = Field(None, title='External Account Id')
     health: Health | None = Field(None, title='Health')
     id: UUID = Field(..., title='Id')
+    is_syncing: bool = Field(False, title='Is Syncing')
     items_synced: int | None = Field(None, title='Items Synced')
     last_error: str | None = Field(None, title='Last Error')
     last_synced_at: datetime | None = Field(None, title='Last Synced At')
@@ -1292,6 +1552,7 @@ class ConnectorConnectionResponse(BaseModel):
     token_expires_at: datetime | None = Field(None, title='Token Expires At')
     updated_at: datetime = Field(..., title='Updated At')
     user_id: UUID = Field(..., title='User Id')
+    uses_workspace_oauth_app: bool = Field(False, title='Uses Workspace Oauth App')
 
 
 class ConnectorDisconnectResponse(BaseModel):
@@ -1360,6 +1621,18 @@ class Messages1(RootModel[list[ConversationMessage]]):
     )
 
 
+class DeletionOperationResponse(BaseModel):
+    accepted_at: datetime = Field(..., title='Accepted At')
+    completed_at: datetime | None = Field(None, title='Completed At')
+    error: str | None = Field(None, title='Error')
+    logically_deleted_at: datetime | None = Field(None, title='Logically Deleted At')
+    operation_id: UUID = Field(..., title='Operation Id')
+    operation_kind: OperationKind = Field(..., title='Operation Kind')
+    state: State = Field(..., title='State')
+    targets: list[DeletionTargetResponse] | None = Field(None, title='Targets')
+    updated_at: datetime = Field(..., title='Updated At')
+
+
 class DocumentFields(BaseModel):
     """
     Document-specific typed fields.
@@ -1375,44 +1648,6 @@ class DocumentFields(BaseModel):
     original_extension: str | None = Field(None, title='Original Extension')
 
 
-class Engram(BaseModel):
-    """
-    The unified engram model: typed kind + per-kind substructure.
-
-    ``kind`` is the canonical discriminator. The per-kind ``conversation``
-    and ``document`` substructures hold typed fields known to the
-    platform; ``metadata`` is reserved for user-supplied annotations and
-    must never carry platform-written discriminators or routing markers.
-
-    Construction enforces shape consistency via a model validator:
-    ``kind=conversation`` must not carry document fields, ``kind=document``
-    must carry a ``DocumentFields`` substructure (``document_type`` is
-    required), and vice versa.
-    """
-
-    chunks: list | None = Field(None, title='Chunks')
-    collection_ids: list[UUID] | None = Field(None, title='Collection Ids')
-    conversation: ConversationFields | None = None
-    created_at: datetime | None = Field(None, title='Created At')
-    document: DocumentFields | None = None
-    extraction_status: GraphExtractionStatus | None = 'pending'
-    id: UUID | None = Field(None, title='Id')
-    ingestion_attempt_number: int | None = Field(None, title='Ingestion Attempt Number')
-    ingestion_status: IngestionStatus | None = 'pending'
-    kind: EngramKind
-    merkle_root: str | None = Field(None, title='Merkle Root')
-    metadata: dict[str, Any] | None = Field(None, title='Metadata')
-    owner_id: UUID = Field(..., title='Owner Id')
-    search_ready_seq: int | None = Field(None, title='Search Ready Seq')
-    size_in_bytes: int | None = Field(None, title='Size In Bytes')
-    text: str | None = Field(None, title='Text')
-    title: str | None = Field(None, title='Title')
-    total_tokens: int | None = Field(None, title='Total Tokens')
-    updated_at: datetime | None = Field(None, title='Updated At')
-    version: str | None = Field(None, title='Version')
-    workflow_run_id: str | None = Field(None, title='Workflow Run Id')
-
-
 class EvidenceRef(BaseModel):
     """
     Tagged reference to a source of evidence.
@@ -1425,6 +1660,23 @@ class EvidenceRef(BaseModel):
     ref_type: EvidenceRefType
     row_indices: list[int] | None = Field(None, title='Row Indices')
     table_name: str | None = Field(None, title='Table Name')
+
+
+class GraphExtractionProgress(BaseModel):
+    """
+    Per-engram graph extraction progress for the latest extraction manifest.
+    """
+
+    batch_submitted_groups: int = Field(0, title='Batch Submitted Groups')
+    completed_groups: int = Field(0, title='Completed Groups')
+    failed_groups: int = Field(0, title='Failed Groups')
+    in_flight_groups: int = Field(0, title='In Flight Groups')
+    last_updated_at: datetime | None = Field(None, title='Last Updated At')
+    pending_groups: int = Field(0, title='Pending Groups')
+    phase: GraphExtractionProgressPhase = 'queued'
+    progress: float = Field(0.0, ge=0.0, le=1.0, title='Progress')
+    status: GraphExtractionStatus = 'pending'
+    total_groups: int = Field(0, title='Total Groups')
 
 
 class GraphPayload(BaseModel):
@@ -1451,7 +1703,7 @@ class GroundedSource(BaseModel):
     modalities) without parsing opaque metadata.
     """
 
-    activation_score: float | None = Field(0.0, title='Activation Score')
+    activation_score: float = Field(0.0, title='Activation Score')
     display_name: str | None = Field(None, title='Display Name')
     engram_id: UUID | None = Field(None, title='Engram Id')
     evidence_ref: EvidenceRef | None = None
@@ -1460,6 +1712,7 @@ class GroundedSource(BaseModel):
     owner_id: UUID | None = Field(None, title='Owner Id')
     page_number: int | None = Field(None, title='Page Number')
     section_path: list[str] | None = Field(None, title='Section Path')
+    source: SourceProvenance | None = None
     source_role: str | None = Field(None, title='Source Role')
     speaker: str | None = Field(None, title='Speaker')
     speaker_id: UUID | None = Field(None, title='Speaker Id')
@@ -1467,6 +1720,19 @@ class GroundedSource(BaseModel):
     supporting_fact_ids: list[UUID] | None = Field(None, title='Supporting Fact Ids')
     text: str = Field(..., title='Text')
     timestamp: datetime | None = Field(None, title='Timestamp')
+
+
+class IngestionFailure(BaseModel):
+    """
+    Sanitized public failure details for a failed ingestion attempt.
+    """
+
+    code: IngestionFailureCode
+    message: str = Field(..., max_length=500, min_length=1, title='Message')
+    occurred_at: datetime = Field(..., title='Occurred At')
+    retryable: bool = Field(..., title='Retryable')
+    stage: IngestionFailureStage
+    workflow_run_id: str | None = Field(None, title='Workflow Run Id')
 
 
 class ListedEngram(BaseModel):
@@ -1483,12 +1749,14 @@ class ListedEngram(BaseModel):
     conversation: ConversationFields | None = None
     created_at: datetime | None = Field(None, title='Created At')
     document: DocumentFields | None = None
-    extraction_status: GraphExtractionStatus | None = 'pending'
+    extraction_status: GraphExtractionStatus = 'pending'
+    generation: int = Field(1, ge=1, title='Generation')
+    graph_extraction_progress: GraphExtractionProgress | None = None
     id: UUID | None = Field(None, title='Id')
     ingestion_attempt_number: int | None = Field(None, title='Ingestion Attempt Number')
-    ingestion_status: IngestionStatus | None = 'pending'
+    ingestion_failure: IngestionFailure | None = None
+    ingestion_status: IngestionStatus = 'pending'
     kind: EngramKind
-    merkle_root: str | None = Field(None, title='Merkle Root')
     metadata: dict[str, Any] | None = Field(None, title='Metadata')
     owner_id: UUID = Field(..., title='Owner Id')
     search_ready_seq: int | None = Field(None, title='Search Ready Seq')
@@ -1524,10 +1792,6 @@ class PaginatedListedEngram(BaseModel):
     Cursor-paginated list of ListedEngram entries. The wire envelope is ``{data, next_cursor, has_more}``.
     """
 
-    applied_wal_seq: int | None = Field(
-        0,
-        description='Highest WAL committed sequence number reflected in this response. Non-zero only when the request was served via the WAL-tail fast path. Pair with ``min_applied_wal_seq`` on the request for read-your-writes assertions.',
-    )
     data: list[ListedEngram]
     has_more: bool = Field(
         ..., description='Whether another page is available after this one.'
@@ -1545,8 +1809,8 @@ class SnapshotEnvelopeInput(BaseModel):
 
     collection_id: UUID = Field(..., title='Collection Id')
     created_at: datetime | None = Field(None, title='Created At')
-    format_version: int | None = Field(3, title='Format Version')
-    generation: int | None = Field(0, title='Generation')
+    format_version: Literal[4] = Field(4, title='Format Version')
+    generation: int = Field(0, title='Generation')
     graph: GraphPayload | None = None
     root_hash: str = Field(..., title='Root Hash')
 
@@ -1576,6 +1840,34 @@ class SnapshotMutationResult(BaseModel):
     snapshot_ref: SnapshotObjectReference | None = None
 
 
+class UnavailableRetrievalAuditSource(BaseModel):
+    """
+    Retained evidence reference whose source can no longer be resolved.
+    """
+
+    evidence_ref: EvidenceRef
+    status: Literal['unavailable'] = Field(..., title='Status')
+
+
+class WorkspaceEncryptionResponse(BaseModel):
+    active_propagation_id: UUID | None = Field(None, title='Active Propagation Id')
+    created_at: datetime = Field(..., title='Created At')
+    kms_key_id: str | None = Field(None, title='Kms Key Id')
+    last_validated_at: datetime | None = Field(None, title='Last Validated At')
+    propagation_completed_items: int | None = Field(
+        None, title='Propagation Completed Items'
+    )
+    propagation_failed_items: int | None = Field(None, title='Propagation Failed Items')
+    propagation_last_error: str | None = Field(None, title='Propagation Last Error')
+    propagation_operation: str | None = Field(None, title='Propagation Operation')
+    propagation_status: str | None = Field(None, title='Propagation Status')
+    propagation_total_items: int | None = Field(None, title='Propagation Total Items')
+    status: WorkspaceEncryptionStatus
+    updated_at: datetime = Field(..., title='Updated At')
+    validation_error: str | None = Field(None, title='Validation Error')
+    workspace_id: UUID = Field(..., title='Workspace Id')
+
+
 class WrappedConnectorConnectionResponse(BaseModel):
     results: ConnectorConnectionResponse
 
@@ -1584,8 +1876,8 @@ class WrappedConnectorDisconnectResponse(BaseModel):
     results: ConnectorDisconnectResponse
 
 
-class WrappedEngram(BaseModel):
-    results: Engram
+class WrappedDeletionOperationResponse(BaseModel):
+    results: DeletionOperationResponse
 
 
 class WrappedListOfConnectorConnectionResponse(BaseModel):
@@ -1602,6 +1894,10 @@ class WrappedSnapshotMutationResult(BaseModel):
     results: SnapshotMutationResult
 
 
+class WrappedWorkspaceEncryptionResponse(BaseModel):
+    results: WorkspaceEncryptionResponse
+
+
 class ActivatedSemantic(BaseModel):
     """
     A semantic item activated during memory traversal.
@@ -1611,18 +1907,18 @@ class ActivatedSemantic(BaseModel):
     utterances for provenance.
     """
 
-    activation_score: float | None = Field(0.0, title='Activation Score')
-    belief_kind: str | None = Field(None, title='Belief Kind')
-    category: str | None = Field('fact', title='Category')
-    corroboration_count: int | None = Field(1, title='Corroboration Count')
+    activation_score: float = Field(0.0, title='Activation Score')
+    category: str = Field('fact', title='Category')
+    corroboration_count: int = Field(1, title='Corroboration Count')
     description: str | None = Field(None, title='Description')
     entity_id: UUID | None = Field(None, title='Entity Id')
     entity_name: str | None = Field(None, title='Entity Name')
     evidence_ids: list[UUID] | None = Field(None, title='Evidence Ids')
     evidence_refs: list[EvidenceRef] | None = Field(None, title='Evidence Refs')
-    extraction_confidence: float | None = Field(0.0, title='Extraction Confidence')
+    extraction_confidence: float = Field(0.0, title='Extraction Confidence')
     id: UUID = Field(..., title='Id')
     is_current: bool | None = Field(None, title='Is Current')
+    memory_class: str | None = Field(None, title='Memory Class')
     predicate: str = Field(..., title='Predicate')
     reasoning: str | None = Field(None, title='Reasoning')
     resolved_at: datetime | None = Field(None, title='Resolved At')
@@ -1642,7 +1938,23 @@ class AppendMemoryResponse(BaseModel):
     )
     id: UUID = Field(..., title='Id')
     message: Message
-    metadata: dict[str, Any] | None = Field({}, title='Metadata')
+    metadata: dict[str, Any] = Field({}, title='Metadata')
+
+
+class AvailableRetrievalAuditSource(BaseModel):
+    """
+    Hydrated source that remains available to the authorized caller.
+    """
+
+    activation_score: float = Field(..., title='Activation Score')
+    display_name: str | None = Field(None, title='Display Name')
+    evidence_ref: EvidenceRef
+    id: UUID = Field(..., title='Id')
+    speaker: str | None = Field(None, title='Speaker')
+    status: Literal['available'] = Field(..., title='Status')
+    supporting_fact_ids: list[UUID] = Field(..., title='Supporting Fact Ids')
+    text: str = Field(..., title='Text')
+    timestamp: datetime | None = Field(None, title='Timestamp')
 
 
 class CreateMemoryRequest(BaseModel):
@@ -1667,6 +1979,11 @@ class CreateMemoryRequest(BaseModel):
     chunks: Chunks1 | None = Field(
         None, description='Pre-chunked text for document kind', title='Chunks'
     )
+    client_idempotency_key: ClientIdempotencyKey | None = Field(
+        None,
+        description='Optional client-supplied key for retrying the same create request without creating duplicate ingestion work.',
+        title='Client Idempotency Key',
+    )
     collection_id: UUID | None = Field(
         None,
         description='Collection UUID (mutually exclusive with snapshot)',
@@ -1683,10 +2000,7 @@ class CreateMemoryRequest(BaseModel):
     ingestion_config: IngestionConfig | None = Field(
         None, description='Custom ingestion config for documents'
     )
-    ingestion_mode: IngestionMode | None = Field(
-        'fast', description='Ingestion mode for documents'
-    )
-    kind: EngramKind | None = Field(
+    kind: EngramKind = Field(
         'document',
         description='Engram discriminator: ``document`` or ``conversation``. When omitted, ``conversation`` is inferred if ``messages`` is present; otherwise defaults to ``document``.',
     )
@@ -1724,6 +2038,46 @@ class CreateMemoryRequest(BaseModel):
     )
 
 
+class Engram(BaseModel):
+    """
+    The unified engram model: typed kind + per-kind substructure.
+
+    ``kind`` is the canonical discriminator. The per-kind ``conversation``
+    and ``document`` substructures hold typed fields known to the
+    platform; ``metadata`` is reserved for user-supplied annotations and
+    must never carry platform-written discriminators or routing markers.
+
+    Construction enforces shape consistency via a model validator:
+    ``kind=conversation`` must not carry document fields, ``kind=document``
+    must carry a ``DocumentFields`` substructure (``document_type`` is
+    required), and vice versa.
+    """
+
+    chunks: list | None = Field(None, title='Chunks')
+    collection_ids: list[UUID] | None = Field(None, title='Collection Ids')
+    conversation: ConversationFields | None = None
+    created_at: datetime | None = Field(None, title='Created At')
+    document: DocumentFields | None = None
+    extraction_status: GraphExtractionStatus = 'pending'
+    generation: int = Field(1, ge=1, title='Generation')
+    graph_extraction_progress: GraphExtractionProgress | None = None
+    id: UUID | None = Field(None, title='Id')
+    ingestion_attempt_number: int | None = Field(None, title='Ingestion Attempt Number')
+    ingestion_failure: IngestionFailure | None = None
+    ingestion_status: IngestionStatus = 'pending'
+    kind: EngramKind
+    metadata: dict[str, Any] | None = Field(None, title='Metadata')
+    owner_id: UUID = Field(..., title='Owner Id')
+    search_ready_seq: int | None = Field(None, title='Search Ready Seq')
+    size_in_bytes: int | None = Field(None, title='Size In Bytes')
+    text: str | None = Field(None, title='Text')
+    title: str | None = Field(None, title='Title')
+    total_tokens: int | None = Field(None, title='Total Tokens')
+    updated_at: datetime | None = Field(None, title='Updated At')
+    version: str | None = Field(None, title='Version')
+    workflow_run_id: str | None = Field(None, title='Workflow Run Id')
+
+
 class MemoryCreateResponse(
     RootModel[WrappedMemoryCreateAcceptedResponse | WrappedSnapshotMutationResult]
 ):
@@ -1759,6 +2113,11 @@ class MemoryRecall(BaseModel):
     inference_hints: list[InferenceHint] | None = Field(None, title='Inference Hints')
     procedural: list[ActivatedProcedure] | None = Field(None, title='Procedural')
     query: str = Field(..., title='Query')
+    retrieval_id: UUID | None = Field(
+        None,
+        description='Stable identifier for retrieval audit and follow-up source resolution.',
+        title='Retrieval Id',
+    )
     search_timing_ms: dict[str, float] | None = Field(None, title='Search Timing Ms')
     semantic: list[ActivatedSemantic] | None = Field(None, title='Semantic')
     sources: list[GroundedSource] | None = Field(None, title='Sources')
@@ -1775,6 +2134,9 @@ class MemorySearchRequest(BaseModel):
     directly for deterministic test/tooling use cases.
     """
 
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     collection_ids: list[str] | None = Field(
         None,
         description='Optional list of collection UUIDs or names to scope the search.',
@@ -1787,6 +2149,11 @@ class MemorySearchRequest(BaseModel):
     filters: dict[str, Any] | None = Field(
         None, description='Optional filters to apply to the search.', title='Filters'
     )
+    include_sources: bool = Field(
+        False,
+        description='Include the raw source material that grounds the retrieved memory. Sources are omitted by default to keep responses compact.',
+        title='Include Sources',
+    )
     nql: str | None = Field(
         None,
         description='Pre-written NQL script. Executes directly without planner compilation. Mutually exclusive with ``query``.',
@@ -1797,6 +2164,11 @@ class MemorySearchRequest(BaseModel):
         description='Natural-language search query. Mutually exclusive with ``nql``.',
         title='Query',
     )
+    retrieval_operation_id: UUID | None = Field(
+        None,
+        description='Stable identifier for one logical retrieval. Reuse it when retrying the same request so retrieval evidence remains idempotent.',
+        title='Retrieval Operation Id',
+    )
     search_settings: SearchSettings | None = Field(
         None, description='Advanced search settings.'
     )
@@ -1806,11 +2178,47 @@ class MemorySearchRequest(BaseModel):
     snapshot_ref: SnapshotObjectReference | None = Field(
         None, description='Device-memory snapshot reference for stateless search.'
     )
+    workspace_id: UUID | None = Field(
+        None,
+        description="Workspace that owns this search audit and request log. When set, the search is constrained to collections in that workspace. Unspecified searches are attributed to the caller's personal workspace.",
+        title='Workspace Id',
+    )
+
+
+class RetrievalAuditSourceGroup(BaseModel):
+    """
+    Sources supporting one result returned by the original search.
+    """
+
+    activation_score: float = Field(..., title='Activation Score')
+    memory_id: UUID = Field(..., title='Memory Id')
+    memory_kind: MemoryKind = Field(..., title='Memory Kind')
+    rank: int = Field(..., ge=0, title='Rank')
+    sources: list[Annotated[AvailableRetrievalAuditSource | UnavailableRetrievalAuditSource, Field(discriminator='status')]] = Field(..., title='Sources')
+    truncated: bool = Field(False, title='Truncated')
+
+
+class RetrievalAuditSourcesResponse(BaseModel):
+    """
+    Authorization-checked sources for a previously audited retrieval.
+    """
+
+    groups: list[RetrievalAuditSourceGroup] = Field(..., title='Groups')
+    retrieval_id: UUID = Field(..., title='Retrieval Id')
+    status: Status2 = Field(..., title='Status')
 
 
 class WrappedAppendMemoryResponse(BaseModel):
     results: AppendMemoryResponse
 
 
+class WrappedEngram(BaseModel):
+    results: Engram
+
+
 class WrappedMemoryRecall(BaseModel):
     results: MemoryRecall
+
+
+class WrappedRetrievalAuditSourcesResponse(BaseModel):
+    results: RetrievalAuditSourcesResponse
