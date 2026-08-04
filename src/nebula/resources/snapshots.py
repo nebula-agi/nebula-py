@@ -2,10 +2,16 @@
 # Source: nebula-sdks/openapi/openapi.json
 
 from __future__ import annotations
-from typing import Any, Optional, Union
+from typing import Any, Literal, Mapping, Optional, Union
 from pydantic import ValidationError
 from .. import _models as models
-from .._runtime import NebulaCore, validate_response as _validate_response
+from .._runtime import (
+    NebulaCore,
+    RequestOptions,
+    prepare_generated_body as _prepare_generated_body,
+    validate_request_body as _validate_request_body,
+    validate_response as _validate_response,
+)
 
 
 class SnapshotsResource:
@@ -14,7 +20,9 @@ class SnapshotsResource:
 
     async def export(
         self,
-        body: models.SnapshotExportRequest
+        body: Union[models.SnapshotExportRequest, Mapping[str, Any]],
+        *,
+        request_options: Optional[RequestOptions] = None
     ) -> Union[models.SnapshotEnvelopeOutput, models.SnapshotObjectReference]:
         """Export a collection snapshot
 
@@ -24,13 +32,17 @@ class SnapshotsResource:
         operationId: snapshots.export
         endpoint: POST /v1/device-memory/snapshot/export
         """
+        body = _validate_request_body(models.SnapshotExportRequest, body)
         _raw = await self._core.request({
             "method": "POST",
             "path": "/v1/device-memory/snapshot/export",
             "path_params": {},
             "query": None,
+            "headers": None,
             "body": body,
-            "idempotent": True,
+            "retryable": False,
+            "http_semantically_idempotent": False,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
@@ -40,7 +52,9 @@ class SnapshotsResource:
 
     async def import_(
         self,
-        body: models.SnapshotImportRequest
+        body: Union[models.SnapshotImportRequest, Mapping[str, Any]],
+        *,
+        request_options: Optional[RequestOptions] = None
     ) -> models.SnapshotImportResult:
         """Import a snapshot into an ephemeral collection
 
@@ -50,13 +64,17 @@ class SnapshotsResource:
         operationId: snapshots.import
         endpoint: POST /v1/device-memory/snapshot/import
         """
+        body = _validate_request_body(models.SnapshotImportRequest, body)
         _raw = await self._core.request({
             "method": "POST",
             "path": "/v1/device-memory/snapshot/import",
             "path_params": {},
             "query": None,
+            "headers": None,
             "body": body,
-            "idempotent": False,
+            "retryable": False,
+            "http_semantically_idempotent": False,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
