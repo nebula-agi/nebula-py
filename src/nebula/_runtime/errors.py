@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Optional
 
+from .public_api_error import PublicApiError, parse_public_api_error
+
 
 class NebulaError(Exception):
     pass
@@ -57,6 +59,7 @@ class NebulaAPIError(NebulaError):
         self.type: Optional[str] = env_type
         self.code: Optional[str] = env_code
         self.details: Any = env_details
+        self.public_error: Optional[PublicApiError] = parse_public_api_error(body)
 
 
 class NebulaBadRequestError(NebulaAPIError):
