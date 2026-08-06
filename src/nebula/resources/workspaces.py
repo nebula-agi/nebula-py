@@ -2,20 +2,60 @@
 # Source: nebula-sdks/openapi/openapi.json
 
 from __future__ import annotations
-from typing import Any, Optional, Union
+from typing import Any, Literal, Mapping, Optional, Union
 from pydantic import ValidationError
 from .. import _models as models
-from .._runtime import NebulaCore, validate_response as _validate_response
+from .._runtime import (
+    NebulaCore,
+    RequestOptions,
+    prepare_generated_body as _prepare_generated_body,
+    validate_request_body as _validate_request_body,
+    validate_response as _validate_response,
+)
 
 
 class WorkspacesResource:
     def __init__(self, core: NebulaCore) -> None:
         self._core = core
 
+    async def create_group(
+        self,
+        workspace_id: str,
+        body: Union[models.GroupCreateRequest, Mapping[str, Any]],
+        *,
+        request_options: Optional[RequestOptions] = None
+    ) -> models.GroupResult:
+        """Create workspace group
+
+        Create a group under an existing team workspace group.
+
+        operationId: workspaces.createGroup
+        endpoint: POST /v1/workspaces/{workspace_id}/groups
+        """
+        body = _validate_request_body(models.GroupCreateRequest, body)
+        _raw = await self._core.request({
+            "method": "POST",
+            "path": "/v1/workspaces/{workspace_id}/groups",
+            "path_params": {"workspace_id": workspace_id},
+            "query": None,
+            "headers": None,
+            "body": body,
+            "retryable": False,
+            "http_semantically_idempotent": False,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.GroupResult.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
     async def create_storage_target(
         self,
         workspace_id: str,
-        body: models.StorageTargetCreateRequest
+        body: Union[models.StorageTargetCreateRequest, Mapping[str, Any]],
+        *,
+        request_options: Optional[RequestOptions] = None
     ) -> models.StorageTargetResponse:
         """Create workspace storage target
 
@@ -24,13 +64,17 @@ class WorkspacesResource:
         operationId: workspaces.createStorageTarget
         endpoint: POST /v1/workspaces/{workspace_id}/storage-targets
         """
+        body = _validate_request_body(models.StorageTargetCreateRequest, body)
         _raw = await self._core.request({
             "method": "POST",
             "path": "/v1/workspaces/{workspace_id}/storage-targets",
             "path_params": {"workspace_id": workspace_id},
             "query": None,
+            "headers": None,
             "body": body,
-            "idempotent": False,
+            "retryable": False,
+            "http_semantically_idempotent": False,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
@@ -38,10 +82,100 @@ class WorkspacesResource:
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
+    async def delete(
+        self,
+        workspace_id: str,
+        *,
+        request_options: Optional[RequestOptions] = None
+    ) -> Union[models.WorkspaceMutationProcessingResult, models.WorkspaceMutationCompletedResult, models.WorkspaceMutationFailedResult]:
+        """Delete Workspace
+
+        Delete a team workspace. Owner only.
+
+        operationId: workspaces.delete
+        endpoint: DELETE /v1/workspaces/{workspace_id}
+        """
+        _raw = await self._core.request({
+            "method": "DELETE",
+            "path": "/v1/workspaces/{workspace_id}",
+            "path_params": {"workspace_id": workspace_id},
+            "query": None,
+            "headers": None,
+            "retryable": True,
+            "http_semantically_idempotent": True,
+            "mutation_replay_identity": {"source":"intrinsic","name":"resource_path"},
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        return _validate_response(Union[models.WorkspaceMutationProcessingResult, models.WorkspaceMutationCompletedResult, models.WorkspaceMutationFailedResult], _raw)
+
+    async def delete_group(
+        self,
+        workspace_id: str,
+        group_id: str,
+        *,
+        request_options: Optional[RequestOptions] = None
+    ) -> models.GenericMessageResponse:
+        """Delete workspace group
+
+        Delete an empty non-root group. Owner/admin only.
+
+        operationId: workspaces.deleteGroup
+        endpoint: DELETE /v1/workspaces/{workspace_id}/groups/{group_id}
+        """
+        _raw = await self._core.request({
+            "method": "DELETE",
+            "path": "/v1/workspaces/{workspace_id}/groups/{group_id}",
+            "path_params": {"workspace_id": workspace_id, "group_id": group_id},
+            "query": None,
+            "headers": None,
+            "retryable": False,
+            "http_semantically_idempotent": True,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.GenericMessageResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
+    async def disable_managed_encryption(
+        self,
+        workspace_id: str,
+        *,
+        request_options: Optional[RequestOptions] = None
+    ) -> models.WorkspaceEncryptionResponse:
+        """Disable workspace managed encryption for new writes
+
+        Stop encrypting new writes under the workspace key. The key stays
+        enabled so existing objects remain readable; scheduling key deletion
+        is a separate, gated operation.
+
+        operationId: workspaces.disableManagedEncryption
+        endpoint: POST /v1/workspaces/{workspace_id}/encryption/disable
+        """
+        _raw = await self._core.request({
+            "method": "POST",
+            "path": "/v1/workspaces/{workspace_id}/encryption/disable",
+            "path_params": {"workspace_id": workspace_id},
+            "query": None,
+            "headers": None,
+            "retryable": False,
+            "http_semantically_idempotent": False,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.WorkspaceEncryptionResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
     async def disable_storage_target(
         self,
         workspace_id: str,
-        target_id: str
+        target_id: str,
+        *,
+        request_options: Optional[RequestOptions] = None
     ) -> models.StorageTargetResponse:
         """Disable workspace storage target
 
@@ -55,7 +189,10 @@ class WorkspacesResource:
             "path": "/v1/workspaces/{workspace_id}/storage-targets/{target_id}",
             "path_params": {"workspace_id": workspace_id, "target_id": target_id},
             "query": None,
-            "idempotent": False,
+            "headers": None,
+            "retryable": False,
+            "http_semantically_idempotent": True,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
@@ -63,9 +200,102 @@ class WorkspacesResource:
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
+    async def enable_managed_encryption(
+        self,
+        workspace_id: str,
+        *,
+        request_options: Optional[RequestOptions] = None
+    ) -> models.WorkspaceEncryptionResponse:
+        """Enable workspace managed encryption
+
+        Provision a dedicated Nebula-managed KMS key for the workspace and
+        encrypt new graph-plane object writes under it. Forward-only:
+        existing objects are re-encrypted lazily as data is rewritten, not
+        immediately.
+
+        operationId: workspaces.enableManagedEncryption
+        endpoint: POST /v1/workspaces/{workspace_id}/encryption/enable
+        """
+        _raw = await self._core.request({
+            "method": "POST",
+            "path": "/v1/workspaces/{workspace_id}/encryption/enable",
+            "path_params": {"workspace_id": workspace_id},
+            "query": None,
+            "headers": None,
+            "retryable": False,
+            "http_semantically_idempotent": False,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.WorkspaceEncryptionResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
+    async def get_managed_encryption(
+        self,
+        workspace_id: str,
+        *,
+        request_options: Optional[RequestOptions] = None
+    ) -> models.WorkspaceEncryptionResponse:
+        """Get workspace managed encryption status
+
+        Current managed-encryption status for the workspace.
+
+        operationId: workspaces.getManagedEncryption
+        endpoint: GET /v1/workspaces/{workspace_id}/encryption
+        """
+        _raw = await self._core.request({
+            "method": "GET",
+            "path": "/v1/workspaces/{workspace_id}/encryption",
+            "path_params": {"workspace_id": workspace_id},
+            "query": None,
+            "headers": None,
+            "retryable": True,
+            "http_semantically_idempotent": True,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.WorkspaceEncryptionResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
+    async def list_groups(
+        self,
+        workspace_id: str,
+        *,
+        cursor: Optional[Union[str, None]] = None,
+        limit: Optional[int] = None,
+        request_options: Optional[RequestOptions] = None
+    ) -> models.PaginatedGroupResponse:
+        """List workspace groups
+
+        List groups for a team workspace.
+
+        operationId: workspaces.listGroups
+        endpoint: GET /v1/workspaces/{workspace_id}/groups
+        """
+        _raw = await self._core.request({
+            "method": "GET",
+            "path": "/v1/workspaces/{workspace_id}/groups",
+            "path_params": {"workspace_id": workspace_id},
+            "query": {"cursor": cursor, "limit": limit},
+            "headers": None,
+            "retryable": True,
+            "http_semantically_idempotent": True,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
+        })
+        try:
+            return models.PaginatedGroupResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
     async def list_storage_targets(
         self,
-        workspace_id: str
+        workspace_id: str,
+        *,
+        request_options: Optional[RequestOptions] = None
     ) -> list[models.StorageTargetResponse]:
         """List workspace storage targets
 
@@ -79,7 +309,10 @@ class WorkspacesResource:
             "path": "/v1/workspaces/{workspace_id}/storage-targets",
             "path_params": {"workspace_id": workspace_id},
             "query": None,
-            "idempotent": True,
+            "headers": None,
+            "retryable": True,
+            "http_semantically_idempotent": True,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
@@ -87,10 +320,73 @@ class WorkspacesResource:
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
+    async def remove_member(
+        self,
+        workspace_id: str,
+        user_id: str,
+        *,
+        request_options: Optional[RequestOptions] = None
+    ) -> Union[models.WorkspaceMutationProcessingResult, models.WorkspaceMutationCompletedResult, models.WorkspaceMutationFailedResult]:
+        """Remove Workspace Member
+
+        Remove a member from a workspace. Owner/admin only.
+
+        operationId: workspaces.removeMember
+        endpoint: DELETE /v1/workspaces/{workspace_id}/members/{user_id}
+        """
+        _raw = await self._core.request({
+            "method": "DELETE",
+            "path": "/v1/workspaces/{workspace_id}/members/{user_id}",
+            "path_params": {"workspace_id": workspace_id, "user_id": user_id},
+            "query": None,
+            "headers": None,
+            "retryable": True,
+            "http_semantically_idempotent": True,
+            "mutation_replay_identity": {"source":"intrinsic","name":"resource_path"},
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        return _validate_response(Union[models.WorkspaceMutationProcessingResult, models.WorkspaceMutationCompletedResult, models.WorkspaceMutationFailedResult], _raw)
+
+    async def update_group(
+        self,
+        workspace_id: str,
+        group_id: str,
+        body: Union[models.GroupUpdateRequest, Mapping[str, Any]],
+        *,
+        request_options: Optional[RequestOptions] = None
+    ) -> models.GroupResult:
+        """Rename workspace group
+
+        Rename a non-root group. Owner/admin only.
+
+        operationId: workspaces.updateGroup
+        endpoint: PATCH /v1/workspaces/{workspace_id}/groups/{group_id}
+        """
+        body = _validate_request_body(models.GroupUpdateRequest, body)
+        _raw = await self._core.request({
+            "method": "PATCH",
+            "path": "/v1/workspaces/{workspace_id}/groups/{group_id}",
+            "path_params": {"workspace_id": workspace_id, "group_id": group_id},
+            "query": None,
+            "headers": None,
+            "body": body,
+            "retryable": False,
+            "http_semantically_idempotent": False,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.GroupResult.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
     async def validate_storage_target(
         self,
         workspace_id: str,
-        target_id: str
+        target_id: str,
+        *,
+        request_options: Optional[RequestOptions] = None
     ) -> models.StorageTargetResponse:
         """Validate workspace storage target
 
@@ -104,7 +400,10 @@ class WorkspacesResource:
             "path": "/v1/workspaces/{workspace_id}/storage-targets/{target_id}/validate",
             "path_params": {"workspace_id": workspace_id, "target_id": target_id},
             "query": None,
-            "idempotent": False,
+            "headers": None,
+            "retryable": False,
+            "http_semantically_idempotent": False,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
