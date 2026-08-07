@@ -1,4 +1,13 @@
-from .client import NebulaCore, ClientOptions, RequestArgs
+from .client import (
+    NebulaCore,
+    ClientOptions,
+    GeneratedBodyField,
+    MutationReplayIdentity,
+    RequestArgs,
+    RequestOptions,
+    Utf8ByteLimit,
+    prepare_generated_body,
+)
 from .errors import (
     NebulaError,
     NebulaAPIError,
@@ -15,12 +24,19 @@ from .errors import (
     error_from_response,
 )
 from .retry import RetryPolicy, DEFAULT_RETRY, is_retryable_status, backoff_seconds
-from .validation import validate_response
+from .public_api_error import PublicApiError
+from .validation import validate_request_body, validate_response
 
 __all__ = [
     "NebulaCore",
     "ClientOptions",
+    "GeneratedBodyField",
     "RequestArgs",
+    "RequestOptions",
+    "MutationReplayIdentity",
+    "Utf8ByteLimit",
+    "prepare_generated_body",
+    "validate_request_body",
     "validate_response",
     "NebulaError",
     "NebulaAPIError",
@@ -35,6 +51,7 @@ __all__ = [
     "NebulaRateLimitError",
     "NebulaServerError",
     "error_from_response",
+    "PublicApiError",
     "RetryPolicy",
     "DEFAULT_RETRY",
     "is_retryable_status",
