@@ -2,10 +2,16 @@
 # Source: nebula-sdks/openapi/openapi.json
 
 from __future__ import annotations
-from typing import Any, Optional, Union
+from typing import Any, Literal, Mapping, Optional, Union
 from pydantic import ValidationError
 from .. import _models as models
-from .._runtime import NebulaCore, validate_response as _validate_response
+from .._runtime import (
+    NebulaCore,
+    RequestOptions,
+    prepare_generated_body as _prepare_generated_body,
+    validate_request_body as _validate_request_body,
+    validate_response as _validate_response,
+)
 
 
 class ClientResource:
@@ -13,11 +19,13 @@ class ClientResource:
         self._core = core
 
     async def health(
-        self
+        self,
+        *,
+        request_options: Optional[RequestOptions] = None
     ) -> models.GenericMessageResponse:
-        """Health probe
+        """Readiness probe
 
-        Lightweight liveness probe. Returns a 200 with a fixed message when the API process is up. Does not verify downstream dependencies (database, storage, workers) — use the internal status endpoints for those.
+        Returns 200 only after required bootstrap collections, the database pool, and graph storage are ready to serve requests. Use `/v1/liveness` for a process-only probe.
 
         operationId: client.health
         endpoint: GET /v1/health
@@ -27,7 +35,10 @@ class ClientResource:
             "path": "/v1/health",
             "path_params": {},
             "query": None,
-            "idempotent": True,
+            "headers": None,
+            "retryable": True,
+            "http_semantically_idempotent": True,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
