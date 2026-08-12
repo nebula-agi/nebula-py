@@ -8,7 +8,9 @@ from ._runtime import NebulaCore, ClientOptions
 from .resources.client import ClientResource
 from .resources.collections import CollectionsResource
 from .resources.connectors import ConnectorsResource
-from .resources.memories import MemoriesResource
+from .resources.ingestion_operation import IngestionOperationResource
+from .resources.marketplace import MarketplaceResource
+from .resources.memory import MemoryResource
 from .resources.snapshots import SnapshotsResource
 from .resources.workspaces import WorkspacesResource
 
@@ -19,7 +21,9 @@ class NebulaClient:
         self.client: ClientResource = ClientResource(self._core)
         self.collections: CollectionsResource = CollectionsResource(self._core)
         self.connectors: ConnectorsResource = ConnectorsResource(self._core)
-        self.memories: MemoriesResource = MemoriesResource(self._core)
+        self.ingestion_operation: IngestionOperationResource = IngestionOperationResource(self._core)
+        self.marketplace: MarketplaceResource = MarketplaceResource(self._core)
+        self.memory: MemoryResource = MemoryResource(self._core)
         self.snapshots: SnapshotsResource = SnapshotsResource(self._core)
         self.workspaces: WorkspacesResource = WorkspacesResource(self._core)
 
