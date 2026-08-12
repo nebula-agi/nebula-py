@@ -2,20 +2,58 @@
 # Source: nebula-sdks/openapi/openapi.json
 
 from __future__ import annotations
-from typing import Any, Optional, Union
+from typing import Any, Literal, Mapping, Optional, Union
 from pydantic import ValidationError
 from .. import _models as models
-from .._runtime import NebulaCore, validate_response as _validate_response
+from .._runtime import (
+    NebulaCore,
+    RequestOptions,
+    prepare_generated_body as _prepare_generated_body,
+    validate_request_body as _validate_request_body,
+    validate_response as _validate_response,
+)
 
 
 class ConnectorsResource:
     def __init__(self, core: NebulaCore) -> None:
         self._core = core
 
+    async def approve_withdrawal_plan(
+        self,
+        connection_id: str,
+        candidate_digest: str,
+        *,
+        request_options: Optional[RequestOptions] = None
+    ) -> models.ConnectorSyncResponse:
+        """Approve a mass-withdrawal plan
+
+        Approve exactly the reviewed candidate set and schedule a new sync. Any change to that set requires a new approval.
+
+        operationId: connectors.approveWithdrawalPlan
+        endpoint: POST /v1/connectors/{connection_id}/withdrawal-plan/{candidate_digest}/approve
+        """
+        _raw = await self._core.request({
+            "method": "POST",
+            "path": "/v1/connectors/{connection_id}/withdrawal-plan/{candidate_digest}/approve",
+            "path_params": {"connection_id": connection_id, "candidate_digest": candidate_digest},
+            "query": None,
+            "headers": None,
+            "retryable": False,
+            "http_semantically_idempotent": False,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.ConnectorSyncResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
     async def connect(
         self,
         provider: str,
-        body: models.ConnectRequest
+        body: Union[models.ConnectRequest, Mapping[str, Any]],
+        *,
+        request_options: Optional[RequestOptions] = None
     ) -> models.ConnectorConnectResponse:
         """Start OAuth connection flow
 
@@ -24,13 +62,17 @@ class ConnectorsResource:
         operationId: connectors.connect
         endpoint: POST /v1/connectors/{provider}/connect
         """
+        body = _validate_request_body(models.ConnectRequest, body)
         _raw = await self._core.request({
             "method": "POST",
             "path": "/v1/connectors/{provider}/connect",
             "path_params": {"provider": provider},
             "query": None,
+            "headers": None,
             "body": body,
-            "idempotent": False,
+            "retryable": False,
+            "http_semantically_idempotent": False,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
@@ -42,7 +84,8 @@ class ConnectorsResource:
         self,
         connection_id: str,
         *,
-        delete_memories: Optional[bool] = None
+        delete_memories: Optional[bool] = None,
+        request_options: Optional[RequestOptions] = None
     ) -> models.ConnectorDisconnectResponse:
         """Disconnect an external data source
 
@@ -56,7 +99,10 @@ class ConnectorsResource:
             "path": "/v1/connectors/{connection_id}",
             "path_params": {"connection_id": connection_id},
             "query": {"delete_memories": delete_memories},
-            "idempotent": True,
+            "headers": None,
+            "retryable": False,
+            "http_semantically_idempotent": True,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
@@ -64,9 +110,40 @@ class ConnectorsResource:
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
+    async def get_hosted_m365_admin_consent(
+        self,
+        workspace_id: str,
+        *,
+        request_options: Optional[RequestOptions] = None
+    ) -> models.HostedM365ConsentStatusResponse:
+        """Get hosted Microsoft Entra consent status
+
+        Return the hosted Microsoft 365 tenant consent state for a workspace without exposing credentials.
+
+        operationId: connectors.getHostedM365AdminConsent
+        endpoint: GET /v1/connectors/m365/admin-consent
+        """
+        _raw = await self._core.request({
+            "method": "GET",
+            "path": "/v1/connectors/m365/admin-consent",
+            "path_params": {},
+            "query": {"workspace_id": workspace_id},
+            "headers": None,
+            "retryable": True,
+            "http_semantically_idempotent": True,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.HostedM365ConsentStatusResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
     async def list(
         self,
-        collection_id: str
+        collection_id: str,
+        *,
+        request_options: Optional[RequestOptions] = None
     ) -> list[models.ConnectorConnectionResponse]:
         """List active connections for a collection
 
@@ -80,7 +157,10 @@ class ConnectorsResource:
             "path": "/v1/connectors",
             "path_params": {},
             "query": {"collection_id": collection_id},
-            "idempotent": True,
+            "headers": None,
+            "retryable": True,
+            "http_semantically_idempotent": True,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
@@ -88,8 +168,39 @@ class ConnectorsResource:
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
+    async def list_oauth_apps(
+        self,
+        collection_id: str,
+        *,
+        request_options: Optional[RequestOptions] = None
+    ) -> list[models.ConnectorOAuthAppResponse]:
+        """List workspace connector OAuth app registrations
+
+        Return the workspace-level OAuth app registrations used by Google and Microsoft 365 connectors for the requested collection's workspace. Client secrets are never returned.
+
+        operationId: connectors.listOAuthApps
+        endpoint: GET /v1/connectors/oauth-apps
+        """
+        _raw = await self._core.request({
+            "method": "GET",
+            "path": "/v1/connectors/oauth-apps",
+            "path_params": {},
+            "query": {"collection_id": collection_id},
+            "headers": None,
+            "retryable": True,
+            "http_semantically_idempotent": True,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return _validate_response(list[models.ConnectorOAuthAppResponse], _raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
     async def list_providers(
-        self
+        self,
+        *,
+        request_options: Optional[RequestOptions] = None
     ) -> list[str]:
         """List available connector providers
 
@@ -103,14 +214,49 @@ class ConnectorsResource:
             "path": "/v1/connectors/providers",
             "path_params": {},
             "query": None,
-            "idempotent": True,
+            "headers": None,
+            "retryable": True,
+            "http_semantically_idempotent": True,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         return _raw
 
+    async def requeue_withdrawal(
+        self,
+        connection_id: str,
+        engram_id: str,
+        *,
+        request_options: Optional[RequestOptions] = None
+    ) -> models.ConnectorSyncResponse:
+        """Retry a failed source withdrawal
+
+        Reset a terminally failed deletion handoff and schedule a new bounded deletion attempt.
+
+        operationId: connectors.requeueWithdrawal
+        endpoint: POST /v1/connectors/{connection_id}/withdrawals/{engram_id}/requeue
+        """
+        _raw = await self._core.request({
+            "method": "POST",
+            "path": "/v1/connectors/{connection_id}/withdrawals/{engram_id}/requeue",
+            "path_params": {"connection_id": connection_id, "engram_id": engram_id},
+            "query": None,
+            "headers": None,
+            "retryable": False,
+            "http_semantically_idempotent": False,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.ConnectorSyncResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
     async def retrieve(
         self,
-        connection_id: str
+        connection_id: str,
+        *,
+        request_options: Optional[RequestOptions] = None
     ) -> models.ConnectorConnectionResponse:
         """Get a single connection by ID
 
@@ -124,7 +270,10 @@ class ConnectorsResource:
             "path": "/v1/connectors/{connection_id}",
             "path_params": {"connection_id": connection_id},
             "query": None,
-            "idempotent": True,
+            "headers": None,
+            "retryable": True,
+            "http_semantically_idempotent": True,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
@@ -132,9 +281,71 @@ class ConnectorsResource:
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
 
+    async def retrieve_withdrawal_plan(
+        self,
+        connection_id: str,
+        *,
+        request_options: Optional[RequestOptions] = None
+    ) -> Union[models.ConnectorWithdrawalPlanResponse, None]:
+        """Get a pending mass-withdrawal plan
+
+        Return the operator-review plan created when a sync would remove more source items than the connection's automatic safety allowance.
+
+        operationId: connectors.retrieveWithdrawalPlan
+        endpoint: GET /v1/connectors/{connection_id}/withdrawal-plan
+        """
+        _raw = await self._core.request({
+            "method": "GET",
+            "path": "/v1/connectors/{connection_id}/withdrawal-plan",
+            "path_params": {"connection_id": connection_id},
+            "query": None,
+            "headers": None,
+            "retryable": True,
+            "http_semantically_idempotent": True,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return _validate_response(Union[models.ConnectorWithdrawalPlanResponse, None], _raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
+    async def start_hosted_m365_admin_consent(
+        self,
+        body: Union[models.HostedM365ConsentStartRequest, Mapping[str, Any]],
+        *,
+        request_options: Optional[RequestOptions] = None
+    ) -> models.HostedM365ConsentStartResponse:
+        """Start hosted Microsoft Entra admin consent
+
+        Create a one-time Entra administrator consent URL for a hosted Microsoft 365 tenant bound to this workspace.
+
+        operationId: connectors.startHostedM365AdminConsent
+        endpoint: POST /v1/connectors/m365/admin-consent
+        """
+        body = _validate_request_body(models.HostedM365ConsentStartRequest, body)
+        _raw = await self._core.request({
+            "method": "POST",
+            "path": "/v1/connectors/m365/admin-consent",
+            "path_params": {},
+            "query": None,
+            "headers": None,
+            "body": body,
+            "retryable": False,
+            "http_semantically_idempotent": False,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.HostedM365ConsentStartResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
     async def sync(
         self,
-        connection_id: str
+        connection_id: str,
+        *,
+        request_options: Optional[RequestOptions] = None
     ) -> models.ConnectorSyncResponse:
         """Manually trigger a sync
 
@@ -148,10 +359,77 @@ class ConnectorsResource:
             "path": "/v1/connectors/{connection_id}/sync",
             "path_params": {"connection_id": connection_id},
             "query": None,
-            "idempotent": True,
+            "headers": None,
+            "retryable": False,
+            "http_semantically_idempotent": False,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
             return models.ConnectorSyncResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
+    async def update_config(
+        self,
+        connection_id: str,
+        body: Union[models.UpdateConfigRequest, Mapping[str, Any]],
+        *,
+        request_options: Optional[RequestOptions] = None
+    ) -> models.ConnectorConfigUpdateResponse:
+        """Update connector config and perform a full resync
+
+        Replace a connection's provider scope and start a full resync.
+
+        operationId: connectors.updateConfig
+        endpoint: PATCH /v1/connectors/{connection_id}/config
+        """
+        body = _validate_request_body(models.UpdateConfigRequest, body)
+        _raw = await self._core.request({
+            "method": "PATCH",
+            "path": "/v1/connectors/{connection_id}/config",
+            "path_params": {"connection_id": connection_id},
+            "query": None,
+            "headers": None,
+            "body": body,
+            "retryable": False,
+            "http_semantically_idempotent": False,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.ConnectorConfigUpdateResponse.model_validate(_raw)
+        except (ValidationError, ValueError):
+            return _raw  # type: ignore[return-value]
+
+    async def update_oauth_app(
+        self,
+        provider_family: str,
+        body: Union[models.ConnectorOAuthAppUpdateRequest, Mapping[str, Any]],
+        *,
+        request_options: Optional[RequestOptions] = None
+    ) -> models.ConnectorOAuthAppResponse:
+        """Update a workspace connector OAuth app
+
+        Update non-secret workspace OAuth app settings for a collection's workspace. Google apps can provide Pub/Sub settings to enable Gmail real-time sync. Client secrets are never returned.
+
+        operationId: connectors.updateOAuthApp
+        endpoint: PATCH /v1/connectors/oauth-apps/{provider_family}
+        """
+        body = _validate_request_body(models.ConnectorOAuthAppUpdateRequest, body)
+        _raw = await self._core.request({
+            "method": "PATCH",
+            "path": "/v1/connectors/oauth-apps/{provider_family}",
+            "path_params": {"provider_family": provider_family},
+            "query": None,
+            "headers": None,
+            "body": body,
+            "retryable": False,
+            "http_semantically_idempotent": False,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        try:
+            return models.ConnectorOAuthAppResponse.model_validate(_raw)
         except (ValidationError, ValueError):
             return _raw  # type: ignore[return-value]
