@@ -2,20 +2,71 @@
 # Source: nebula-sdks/openapi/openapi.json
 
 from __future__ import annotations
-from typing import Any, Optional, Union
+from typing import Any, Literal, Mapping, Optional, Union
 from pydantic import ValidationError
 from .. import _models as models
-from .._runtime import NebulaCore, validate_response as _validate_response
+from .. import _inputs as inputs
+from .._runtime import (
+    NebulaCore,
+    RequestOptions,
+    prepare_generated_body as _prepare_generated_body,
+    validate_request_body as _validate_request_body,
+    validate_response as _validate_response,
+)
 
 
 class CollectionsResource:
     def __init__(self, core: NebulaCore) -> None:
         self._core = core
 
+    async def copy(
+        self,
+        workspace_id: str,
+        source_collection_id: str,
+        body: Union[inputs.CopyCollectionInput, models.CopyCollectionRequest, Mapping[str, Any]],
+        *,
+        request_options: Optional[RequestOptions] = None
+    ) -> Union[models.CollectionProvisioningResult, models.CollectionActiveResult, models.CollectionDeletingResult, models.CollectionDeletedResult, models.CollectionFailedResult]:
+        """Copy collection
+
+        Copy an existing collection.
+
+        Starts a durable copy of the collection, including all engrams, chunks,
+        and knowledge graph data (entities, relationships, facts). The response
+        immediately reports whether provisioning is still processing, succeeded,
+        or failed. Retry with the same collection_id to recover the same result.
+
+        You need at least READ_CONTENT access to the source collection to copy it.
+        For team workspace collections, you must be a workspace owner or admin.
+
+        operationId: collections.copy
+        endpoint: POST /v1/workspaces/{workspace_id}/collections/{source_collection_id}/copy
+        """
+        body = _prepare_generated_body(body, [{"path":["collection_id"],"kind":"uuid"}])
+        body = _validate_request_body(models.CopyCollectionRequest, body)
+        _raw = await self._core.request({
+            "method": "POST",
+            "path": "/v1/workspaces/{workspace_id}/collections/{source_collection_id}/copy",
+            "path_params": {"workspace_id": workspace_id, "source_collection_id": source_collection_id},
+            "query": None,
+            "headers": None,
+            "body": body,
+            "routing": {"owner": "workspace", "path_fields": ["workspace_id","workspaceId"]},
+            "retryable": True,
+            "http_semantically_idempotent": False,
+            "mutation_replay_identity": {"source":"body","name":"collection_id","generated":"uuid"},
+            "utf8_byte_limits": [{"source":"body","path":["name"],"maximum":256}],
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
+        })
+        _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
+        return _validate_response(Union[models.CollectionProvisioningResult, models.CollectionActiveResult, models.CollectionDeletingResult, models.CollectionDeletedResult, models.CollectionFailedResult], _raw)
+
     async def create(
         self,
-        body: models.CreateCollectionRequest
-    ) -> models.CollectionResponse:
+        body: Union[inputs.CreateCollectionInput, models.CreateCollectionRequest, Mapping[str, Any]],
+        *,
+        request_options: Optional[RequestOptions] = None
+    ) -> Union[models.CollectionProvisioningResult, models.CollectionActiveResult, models.CollectionDeletingResult, models.CollectionDeletedResult, models.CollectionFailedResult]:
         """Create a new collection
 
         Create a new collection and automatically add the creating user
@@ -28,32 +79,41 @@ class CollectionsResource:
         operationId: collections.create
         endpoint: POST /v1/collections
         """
+        body = _prepare_generated_body(body, [{"path":["collection_id"],"kind":"uuid"}])
+        body = _validate_request_body(models.CreateCollectionRequest, body)
         _raw = await self._core.request({
             "method": "POST",
             "path": "/v1/collections",
             "path_params": {},
             "query": None,
+            "headers": None,
             "body": body,
-            "idempotent": False,
+            "routing": {"owner": "workspace", "body_fields": ["workspace_id","workspaceId"]},
+            "retryable": True,
+            "http_semantically_idempotent": False,
+            "mutation_replay_identity": {"source":"body","name":"collection_id","generated":"uuid"},
+            "utf8_byte_limits": [{"source":"body","path":["name"],"maximum":256}],
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
-        try:
-            return models.CollectionResponse.model_validate(_raw)
-        except (ValidationError, ValueError):
-            return _raw  # type: ignore[return-value]
+        return _validate_response(Union[models.CollectionProvisioningResult, models.CollectionActiveResult, models.CollectionDeletingResult, models.CollectionDeletedResult, models.CollectionFailedResult], _raw)
 
     async def delete(
         self,
-        id: str
-    ) -> models.GenericBooleanResponse:
+        id: str,
+        *,
+        request_options: Optional[RequestOptions] = None
+    ) -> Union[models.CollectionProvisioningResult, models.CollectionActiveResult, models.CollectionDeletingResult, models.CollectionDeletedResult, models.CollectionFailedResult]:
         """Delete collection
 
         Delete an existing collection.
 
         This endpoint allows deletion of a collection identified by its
         UUID. The user must have appropriate permissions to delete the
-        collection. Deleting a collection removes all associations but does
-        not delete the engrams within it.
+        collection. The collection is marked as deleting immediately and
+        data removal continues asynchronously. Memories shared with other
+        collections remain available there; memories exclusive to this
+        collection are removed.
 
         operationId: collections.delete
         endpoint: DELETE /v1/collections/{id}
@@ -63,13 +123,14 @@ class CollectionsResource:
             "path": "/v1/collections/{id}",
             "path_params": {"id": id},
             "query": None,
-            "idempotent": True,
+            "headers": None,
+            "retryable": True,
+            "http_semantically_idempotent": True,
+            "mutation_replay_identity": {"source":"intrinsic","name":"resource_path"},
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
-        try:
-            return models.GenericBooleanResponse.model_validate(_raw)
-        except (ValidationError, ValueError):
-            return _raw  # type: ignore[return-value]
+        return _validate_response(Union[models.CollectionProvisioningResult, models.CollectionActiveResult, models.CollectionDeletingResult, models.CollectionDeletedResult, models.CollectionFailedResult], _raw)
 
     async def list(
         self,
@@ -79,7 +140,8 @@ class CollectionsResource:
         cursor: Optional[Union[str, None]] = None,
         limit: Optional[int] = None,
         owner_only: Optional[bool] = None,
-        workspace_id: Optional[Union[str, None]] = None
+        workspace_id: Optional[Union[str, None]] = None,
+        request_options: Optional[RequestOptions] = None
     ) -> models.PaginatedCollectionResponse:
         """List collections
 
@@ -101,7 +163,10 @@ class CollectionsResource:
             "path": "/v1/collections",
             "path_params": {},
             "query": {"ids": ids, "name": name, "cursor": cursor, "limit": limit, "owner_only": owner_only, "workspace_id": workspace_id},
-            "idempotent": True,
+            "headers": None,
+            "retryable": True,
+            "http_semantically_idempotent": True,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
         })
         try:
             return models.PaginatedCollectionResponse.model_validate(_raw)
@@ -110,7 +175,9 @@ class CollectionsResource:
 
     async def retrieve(
         self,
-        id: str
+        id: str,
+        *,
+        request_options: Optional[RequestOptions] = None
     ) -> models.CollectionResponse:
         """Get collection details
 
@@ -128,7 +195,10 @@ class CollectionsResource:
             "path": "/v1/collections/{id}",
             "path_params": {"id": id},
             "query": None,
-            "idempotent": True,
+            "headers": None,
+            "retryable": True,
+            "http_semantically_idempotent": True,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
@@ -140,7 +210,8 @@ class CollectionsResource:
         self,
         collection_name: str,
         *,
-        owner_id: Optional[Union[str, None]] = None
+        owner_id: Optional[Union[str, None]] = None,
+        request_options: Optional[RequestOptions] = None
     ) -> models.CollectionResponse:
         """Get a collection by name
 
@@ -157,7 +228,10 @@ class CollectionsResource:
             "path": "/v1/collections/name/{collection_name}",
             "path_params": {"collection_name": collection_name},
             "query": {"owner_id": owner_id},
-            "idempotent": True,
+            "headers": None,
+            "retryable": True,
+            "http_semantically_idempotent": True,
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
@@ -168,7 +242,9 @@ class CollectionsResource:
     async def update(
         self,
         id: str,
-        body: models.UpdateCollectionRequest
+        body: Union[models.UpdateCollectionRequest, Mapping[str, Any]],
+        *,
+        request_options: Optional[RequestOptions] = None
     ) -> models.CollectionResponse:
         """Update collection
 
@@ -181,13 +257,18 @@ class CollectionsResource:
         operationId: collections.update
         endpoint: POST /v1/collections/{id}
         """
+        body = _validate_request_body(models.UpdateCollectionRequest, body)
         _raw = await self._core.request({
             "method": "POST",
             "path": "/v1/collections/{id}",
             "path_params": {"id": id},
             "query": None,
+            "headers": None,
             "body": body,
-            "idempotent": False,
+            "retryable": False,
+            "http_semantically_idempotent": False,
+            "utf8_byte_limits": [{"source":"body","path":["name"],"maximum":256}],
+            "timeout_seconds": request_options.timeout_seconds if request_options else None,
         })
         _raw = _raw["results"] if isinstance(_raw, dict) else getattr(_raw, "results", _raw)
         try:
