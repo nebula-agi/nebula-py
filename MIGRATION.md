@@ -1,13 +1,62 @@
-# Migrating to nebula-sdk 1.4.x
+# Migration guide
+
+When upgrading across multiple release lines, review every section newer than
+your installed version and apply the applicable changes from oldest to newest.
+
+## Migrating to nebula-sdk 2.x
+
+Version 2.x requires the collection context when operating on a single
+ingestion operation. Retain the collection ID used in the operation's
+`create` request and pass that same value to subsequent calls.
+
+### Ingestion-operation methods
+
+In 1.x, single-operation methods accepted only the operation ID:
+
+```python
+await client.ingestion_operation.put_item(operation_id, body)
+await client.ingestion_operation.seal(operation_id)
+await client.ingestion_operation.get(operation_id)
+await client.ingestion_operation.cancel(operation_id)
+```
+
+In 2.x, pass the collection ID through the required keyword-only
+`collection_id` argument:
+
+```python
+await client.ingestion_operation.put_item(
+    operation_id,
+    body,
+    collection_id=collection_id,
+)
+await client.ingestion_operation.seal(
+    operation_id,
+    collection_id=collection_id,
+)
+await client.ingestion_operation.get(
+    operation_id,
+    collection_id=collection_id,
+)
+await client.ingestion_operation.cancel(
+    operation_id,
+    collection_id=collection_id,
+)
+```
+
+`collection_id` must be the same value supplied when the operation was created.
+
+The `create`, `get_many`, and `search_barrier` method signatures are unchanged.
+
+## Migrating to nebula-sdk 1.4.x
 
 The 1.4.x line replaces the Stainless-generated SDK with an in-house generator.
 Public method names and call signatures are preserved; the **wire shapes**
 for errors and list responses changed — see the breaking-change section
 below.
 
-## Breaking changes
+### Breaking changes
 
-### 1. Error envelope
+#### Error envelope
 
 Every 4xx / 5xx now returns the canonical envelope:
 
@@ -45,7 +94,7 @@ If you wrote error-class checks against the body's `error_type` field, those
 no longer match — `error_type` was renamed to `type`. Switch the check to
 `err.type` or the typed-class hierarchy.
 
-### 2. Cursor pagination
+#### Cursor pagination
 
 List endpoints (`list_memories`, `list_collections`) moved from offset to
 opaque cursors:
@@ -71,14 +120,7 @@ while page.has_more:
 either drop it or query a dedicated count endpoint (none exists today —
 file an issue if you need one).
 
-### 3. `applied_wal_seq` on `list_memories`
-
-For read-your-writes scenarios, `list_memories` now returns an
-`applied_wal_seq` field. Pair it with `min_applied_wal_seq` on the request
-to assert that a prior write is visible. Default behavior is unchanged for
-callers that don't pass `min_applied_wal_seq`.
-
-## Non-breaking improvements
+### Non-breaking improvements
 
 - `store_memories` accepts a `max_concurrency` argument (default 8) —
   bounded worker pool, no more accidental unbounded fan-out under the hood.
