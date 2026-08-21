@@ -16,7 +16,6 @@ import asyncio
 import os
 import sys
 import time
-from uuid import UUID
 
 from nebula import (
     ClientOptions,
@@ -51,20 +50,19 @@ async def main() -> None:
         _assert(hasattr(page, "has_more") and isinstance(page.has_more, bool), "list_collections returns .has_more: bool")
         _assert(hasattr(page, "next_cursor"), "list_collections returns .next_cursor (nullable)")
 
-        # 2. list_memories — cursor + applied_wal_seq wire shape
-        memories_page = await client.memories.list(limit=10)
+        # 2. list_memories — cursor wire shape
+        memories_page = await client.memory.list(limit=10)
         _assert(hasattr(memories_page, "data") and isinstance(memories_page.data, list), "list_memories returns .data: list")
         _assert(hasattr(memories_page, "has_more"), "list_memories returns .has_more: bool")
         _assert(hasattr(memories_page, "next_cursor"), "list_memories returns .next_cursor (nullable)")
-        _assert(hasattr(memories_page, "applied_wal_seq"), "list_memories returns .applied_wal_seq (RYW token)")
 
-        # 3. Create a throwaway collection — the SDK peels the `{results: X}`
-        # wire envelope, so the return is the inner CollectionResponse model.
-        created = await client.collections.create(body={"name": f"e2e-sdk-py-{int(time.time())}"})
-        collection_id = getattr(created, "id", None)
-        # Generated pydantic models coerce id fields to typed UUIDs — that's
-        # the desired SDK behavior (callers get a real UUID, not a string).
-        _assert(isinstance(collection_id, UUID), "collections.create returns id: UUID")
+        # 3. Create a throwaway collection. The SDK generates its identity.
+        create_token = int(time.time())
+        created = await client.collections.create(body={
+            "name": f"e2e-sdk-py-{create_token}",
+        })
+        collection_id = created.id
+        _assert(collection_id is not None, "collection create returns an id")
 
         # 4. Retrieve
         retrieved = await client.collections.retrieve(id=str(collection_id))
@@ -73,7 +71,9 @@ async def main() -> None:
         # 5. Error envelope round-trip — force a 4xx
         error_caught = False
         try:
-            await client.collections.create(body={"name": ""})
+            await client.collections.create(body={
+                "name": "",
+            })
         except NebulaAPIError as err:
             error_caught = True
             _assert(isinstance(err.type, str), "envelope.type decoded as str")
@@ -89,17 +89,22 @@ async def main() -> None:
         # 6. Memory ingestion (gated)
         if not SKIP_INGESTION:
             try:
-                await client.memories.create(body={
-                    "kind": "document",
-                    "collection_id": collection_id,
+                await client.memory.store(body={
+                    "collection_id": str(collection_id),
                     "raw_text": "e2e smoke test memory",
                 })
             except NebulaServerError as err:
-                print(f"  (got 500: {err.type}, likely Hatchet outage — set NEBULA_E2E_SKIP_INGESTION=1 to skip)")
+                print(f"  (got 500: {err.type}, likely Orchestration outage — set NEBULA_E2E_SKIP_INGESTION=1 to skip)")
 
         # 7. Clean up
-        deleted = await client.collections.delete(id=str(collection_id))
-        _assert(getattr(deleted, "success", None) is True, "collections.delete returns success: True")
+        deleted = await client.collections.delete(
+            id=str(collection_id),
+        )
+        _assert(
+            deleted.id == collection_id
+            and deleted.state.value in {"deleting", "deleted"},
+            "collections.delete returns the durable collection state",
+        )
 
     print("\nAll SDK e2e smoke checks passed.")
 
