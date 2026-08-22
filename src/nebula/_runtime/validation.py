@@ -5,6 +5,11 @@ from typing import Any, Union, get_args, get_origin
 from pydantic import TypeAdapter, ValidationError
 
 
+def validate_request_body(annotation: Any, raw: Any) -> Any:
+    """Validate mapping-style SDK inputs before issuing an HTTP request."""
+    return TypeAdapter(annotation).validate_python(raw, extra="forbid")
+
+
 def validate_response(annotation: Any, raw: Any) -> Any:
     """Validate a raw wire payload against a response annotation.
 
