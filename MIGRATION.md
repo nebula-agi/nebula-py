@@ -1,13 +1,18 @@
-# Migrating to nebula-sdk 1.4.x
+# Migration guide
+
+When upgrading across multiple release lines, review every section newer than
+your installed version and apply the applicable changes from oldest to newest.
+
+## Migrating to nebula-sdk 1.4.x
 
 The 1.4.x line replaces the Stainless-generated SDK with an in-house generator.
 Public method names and call signatures are preserved; the **wire shapes**
 for errors and list responses changed — see the breaking-change section
 below.
 
-## Breaking changes
+### Breaking changes
 
-### 1. Error envelope
+#### Error envelope
 
 Every 4xx / 5xx now returns the canonical envelope:
 
@@ -45,7 +50,7 @@ If you wrote error-class checks against the body's `error_type` field, those
 no longer match — `error_type` was renamed to `type`. Switch the check to
 `err.type` or the typed-class hierarchy.
 
-### 2. Cursor pagination
+#### Cursor pagination
 
 List endpoints (`list_memories`, `list_collections`) moved from offset to
 opaque cursors:
@@ -71,14 +76,7 @@ while page.has_more:
 either drop it or query a dedicated count endpoint (none exists today —
 file an issue if you need one).
 
-### 3. `applied_wal_seq` on `list_memories`
-
-For read-your-writes scenarios, `list_memories` now returns an
-`applied_wal_seq` field. Pair it with `min_applied_wal_seq` on the request
-to assert that a prior write is visible. Default behavior is unchanged for
-callers that don't pass `min_applied_wal_seq`.
-
-## Non-breaking improvements
+### Non-breaking improvements
 
 - `store_memories` accepts a `max_concurrency` argument (default 8) —
   bounded worker pool, no more accidental unbounded fan-out under the hood.
