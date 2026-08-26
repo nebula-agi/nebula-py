@@ -3,9 +3,11 @@
 
 from __future__ import annotations
 from . import _models as models
+from . import _inputs as inputs
 from ._client import NebulaClient
 from ._runtime import (
     ClientOptions,
+    RequestOptions,
     RetryPolicy,
     DEFAULT_RETRY,
     NebulaError,
@@ -20,6 +22,7 @@ from ._runtime import (
     NebulaValidationError,
     NebulaRateLimitError,
     NebulaServerError,
+    PublicApiError,
 )
 from ._dx import Nebula
 
@@ -28,9 +31,11 @@ __all__ = [
     "Nebula",
     "NebulaClient",
     "ClientOptions",
+    "RequestOptions",
     "RetryPolicy",
     "DEFAULT_RETRY",
     "models",
+    "inputs",
     "NebulaError",
     "NebulaAPIError",
     "NebulaConnectionError",
@@ -43,4 +48,5 @@ __all__ = [
     "NebulaValidationError",
     "NebulaRateLimitError",
     "NebulaServerError",
+    "PublicApiError",
 ]
