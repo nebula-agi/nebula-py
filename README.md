@@ -1,8 +1,8 @@
 # nebula-sdk
 
-Official Nebula API SDK for Python. Provides typed async access to the public
-Nebula REST API: collections, memories, connectors, snapshots, and system
-health.
+Official Python SDK for Nebula by Zeroset. Provides typed async access to the
+public Nebula REST API: collections, memories, connectors, snapshots, and
+system health.
 
 ## Install
 
@@ -25,15 +25,20 @@ pip install --pre nebula-sdk
 
 ```python
 import asyncio
+import uuid
 from nebula import Nebula, ClientOptions
 
 async def main() -> None:
     async with Nebula(ClientOptions(api_key="...")) as client:
-        memory_id = await client.store_memory(
-            collection_id="01234567-...",
-            raw_text="hello, world",
-        )
-        results = await client.memories.search(body={"query": "hello"})
+        stored = await client.memory.store(body={
+            "collection_id": "01234567-...",
+            "raw_text": "hello, world",
+        })
+        results = await client.memory.search(body={
+            "query": "hello",
+            "retrieval_operation_id": str(uuid.uuid4()),
+        })
+        print(stored)
         print(results)
 
 asyncio.run(main())
@@ -69,7 +74,8 @@ All HTTP errors map to a typed exception hierarchy:
 
 ## Docs
 
-- API reference: https://docs.zeroset.com
+- Product documentation: https://docs.zeroset.com
+- OpenAPI contract: https://api.zeroset.com/openapi.json
 - Migration notes: see `MIGRATION.md` in the source repo
 
 ## License
