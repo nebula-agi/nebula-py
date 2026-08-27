@@ -14,7 +14,11 @@ class RetryPolicy:
 
 DEFAULT_RETRY = RetryPolicy()
 
-_RETRYABLE_STATUSES: frozenset[int] = frozenset({408, 429, 502, 503, 504})
+# 421 reports that this request reached a region that does not own the
+# collection. Ownership is durable and the routing directory converges, so
+# the misroute is transient; the edge replays what it can, and retrying
+# covers the requests it cannot (uncloneable bodies, unannotated routes).
+_RETRYABLE_STATUSES: frozenset[int] = frozenset({421, 429, 503})
 
 
 def is_retryable_status(status: int) -> bool:
@@ -24,7 +28,9 @@ def is_retryable_status(status: int) -> bool:
 def backoff_seconds(
     attempt: int, policy: RetryPolicy, retry_after: Optional[float] = None
 ) -> float:
-    if retry_after is not None:
-        return min(retry_after, policy.max_seconds)
     cap = min(policy.base_seconds * (2 ** attempt), policy.max_seconds)
-    return random.uniform(0, cap)
+    jitter = random.uniform(0, cap)
+    if retry_after is not None:
+        # Retry-After is a server-imposed minimum, not ordinary client backoff.
+        return max(jitter, max(0.0, retry_after))
+    return jitter
